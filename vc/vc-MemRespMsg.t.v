@@ -161,19 +161,18 @@ module tester;
 
     // Create read messages
 
-    t3_do_test( c_read,  2'd1, 64'h_0a0b0c0d_0a0b0c0d );
-    t3_do_test( c_read,  2'd2, 64'h_0b0c0d0e_0b0c0d0e );
-    t3_do_test( c_read,  2'd0, 64'h_0c0d0e0f_0c0d0e0f );
+    t3_do_test( c_read,  2'd1, 64'h0a0b0c0d_0a0b0c0d );
+    t3_do_test( c_read,  2'd2, 64'h0b0c0d0e_0b0c0d0e );
+    t3_do_test( c_read,  2'd0, 64'h0c0d0e0f_0c0d0e0f );
 
     // Create write messages
 
-    t3_do_test( c_write, 2'dx, 64'h_xxxxxxxx_xxxxxxxx );
-    t3_do_test( c_write, 2'dx, 64'h_xxxxxxxx_xxxxxxxx );
-    t3_do_test( c_write, 2'dx, 64'h_xxxxxxxx_xxxxxxxx );
+    t3_do_test( c_write, 2'dx, 64'hxxxxxxxx_xxxxxxxx );
+    t3_do_test( c_write, 2'dx, 64'hxxxxxxxx_xxxxxxxx );
+    t3_do_test( c_write, 2'dx, 64'hxxxxxxxx_xxxxxxxx );
 
   end
   `VC_TEST_CASE_END
 
   `VC_TEST_SUITE_END( 3 )
 endmodule
-
