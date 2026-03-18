@@ -6,6 +6,7 @@
 `define RISCV_CORE_CTRL_V
 
 `include "riscvdualfetch-InstMsg.v"
+`include "vc-StateElements.v"
 
 module riscv_CoreCtrl
 (
@@ -158,7 +159,7 @@ module riscv_CoreCtrl
 
   // Stall in F if D is stalled
 
-  assign stall_Fhl = stall_Dhl;
+  assign stall_Fhl = ((steering_mux_sel_Dhl == 1'b0) && inst_val_Dhl && !squash_Dhl) || stall_Dhl;
 
   // Next bubble bit
 
@@ -574,43 +575,73 @@ module riscv_CoreCtrl
 
   // TODO: generate your steering signal here!
 
-  always @(*)
-  begin
-    
-    if ( steering_mux_sel_Dhl == 1'b0 )
-    begin
-      // TODO: add your steering logic here!
+  reg steering_mux_sel_Dhl_reg;
+
+  always @(posedge clk) begin
+    if (reset) begin
+      steering_mux_sel_Dhl_reg <= 0;
     end
-    else if ( steering_mux_sel_Dhl == 1'b1 )
-    begin
-      // TODO: add your steering logic here!
+    if (squash_Dhl) begin
+      steering_mux_sel_Dhl_reg <= 0;
+    end
+    if (!stall_Dhl) begin
+      steering_mux_sel_Dhl_reg <= ~steering_mux_sel_Dhl_reg;
     end
   end
 
+  assign steering_mux_sel_Dhl = steering_mux_sel_Dhl_reg;
+
+  reg [31:0] instA_Dhl_reg;
+  reg [cs_sz-1:0] csA;
+
+  // reg instA_val_Dhl;
+  // reg instB_val_Dhl;
+
+  always @(*)
+  begin
+    csA <= {cs_sz{1'bx}};
+    instA_Dhl_reg <= 32'bx;
+
+    if ( steering_mux_sel_Dhl == 1'b0 )
+    begin
+      csA <= cs0;
+      instA_Dhl_reg <= ir0_Dhl;
+    end
+    else if ( steering_mux_sel_Dhl == 1'b1 )
+    begin
+      csA <= cs1;
+      instA_Dhl_reg <= ir1_Dhl;
+    end
+  end
+
+  assign instA_Dhl = instA_Dhl_reg;
+  assign instB_Dhl = 32'b0;
+
   // Jump and Branch Controls
 
-  wire       brj_taken_Dhl = ( inst_val_Dhl && cs0[`RISCV_INST_MSG_J_EN] );
-  wire [2:0] br_sel_Dhl    = cs0[`RISCV_INST_MSG_BR_SEL];
+  wire       brj_taken_Dhl = ( inst_val_Dhl && csA[`RISCV_INST_MSG_J_EN] );
+  wire [2:0] br_sel_Dhl    = csA[`RISCV_INST_MSG_BR_SEL];
 
   // PC Mux Select
 
-  wire [1:0] pc_mux_sel_Dhl = cs0[`RISCV_INST_MSG_PC_SEL];
+  wire [1:0] pc_mux_sel_Dhl = csA[`RISCV_INST_MSG_PC_SEL];
 
   // Operand Bypassing Logic
 
-  wire [4:0] rs10_addr_Dhl  = inst0_rs1_Dhl;
-  wire [4:0] rs20_addr_Dhl  = inst0_rs2_Dhl;
+  wire [4:0] rs10_addr_Dhl  = (steering_mux_sel_Dhl == 0) ? inst0_rs1_Dhl : inst1_rs1_Dhl;
+  wire [4:0] rs20_addr_Dhl  = (steering_mux_sel_Dhl == 0) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
 
   wire [4:0] rs11_addr_Dhl  = inst1_rs1_Dhl;
   wire [4:0] rs21_addr_Dhl  = inst1_rs2_Dhl;
 
-  wire       rs10_en_Dhl    = cs0[`RISCV_INST_MSG_RS_EN];
-  wire       rs20_en_Dhl    = cs0[`RISCV_INST_MSG_RT_EN];
+  wire       rs10_en_Dhl    = csA[`RISCV_INST_MSG_RS_EN];
+  wire       rs20_en_Dhl    = csA[`RISCV_INST_MSG_RT_EN];
 
   wire       rs11_en_Dhl    = cs1[`RISCV_INST_MSG_RS_EN];
   wire       rs21_en_Dhl    = cs1[`RISCV_INST_MSG_RT_EN];
 
   // For Part 2 and Optionaly Part 1, replace the following control logic with a scoreboard
+
 
   wire       rs10_AX0_byp_Dhl = rs10_en_Dhl
                          && rfA_wen_X0hl
@@ -769,54 +800,64 @@ module riscv_CoreCtrl
 
   // Operand Mux Select
 
-  wire [1:0] op00_mux_sel_Dhl = cs0[`RISCV_INST_MSG_OP0_SEL];
-  wire [2:0] op01_mux_sel_Dhl = cs0[`RISCV_INST_MSG_OP1_SEL];
+  wire [1:0] op00_mux_sel_Dhl = csA[`RISCV_INST_MSG_OP0_SEL];
+  wire [2:0] op01_mux_sel_Dhl = csA[`RISCV_INST_MSG_OP1_SEL];
 
   wire [1:0] op10_mux_sel_Dhl = cs1[`RISCV_INST_MSG_OP0_SEL];
   wire [2:0] op11_mux_sel_Dhl = cs1[`RISCV_INST_MSG_OP1_SEL];
 
+  assign opA0_byp_mux_sel_Dhl = op00_byp_mux_sel_Dhl;
+  assign opA0_mux_sel_Dhl = op00_mux_sel_Dhl;
+  assign opA1_byp_mux_sel_Dhl = op01_byp_mux_sel_Dhl;
+  assign opA1_byp_mux_Dhl = op01_mux_sel_Dhl;
+
+  assign opB0_byp_mux_sel_Dhl = 4'd0;
+  assign opB0_mux_sel_Dhl = 2'd0;
+  assign opB1_byp_mux_sel_Dhl = 4'd0;
+  assign opB1_byp_mux_Dhl = 3'd0;
+
   // ALU Function
 
-  wire [3:0] alu0_fn_Dhl = cs0[`RISCV_INST_MSG_ALU_FN];
+  wire [3:0] alu0_fn_Dhl = csA[`RISCV_INST_MSG_ALU_FN];
 
   // Muldiv Function
 
-  assign muldivreq_msg_fn_Dhl = cs0[`RISCV_INST_MSG_MULDIV_FN];
+  assign muldivreq_msg_fn_Dhl = csA[`RISCV_INST_MSG_MULDIV_FN];
 
   // Muldiv Controls
 
-  wire muldivreq_val_Dhl = cs0[`RISCV_INST_MSG_MULDIV_EN];
+  wire muldivreq_val_Dhl = csA[`RISCV_INST_MSG_MULDIV_EN];
 
   // Muldiv Mux Select
 
-  wire muldiv_mux_sel_Dhl = cs0[`RISCV_INST_MSG_MULDIV_SEL];
+  wire muldiv_mux_sel_Dhl = csA[`RISCV_INST_MSG_MULDIV_SEL];
 
   // Execute Mux Select
 
-  wire execute_mux_sel_Dhl = cs0[`RISCV_INST_MSG_MULDIV_EN];
+  wire execute_mux_sel_Dhl = csA[`RISCV_INST_MSG_MULDIV_EN];
 
-  wire       is_load_Dhl         = ( cs0[`RISCV_INST_MSG_MEM_REQ] == ld );
+  wire       is_load_Dhl         = ( csA[`RISCV_INST_MSG_MEM_REQ] == ld );
 
-  wire       dmemreq_msg_rw_Dhl  = ( cs0[`RISCV_INST_MSG_MEM_REQ] == st );
-  wire [1:0] dmemreq_msg_len_Dhl = cs0[`RISCV_INST_MSG_MEM_LEN];
-  wire       dmemreq_val_Dhl     = ( cs0[`RISCV_INST_MSG_MEM_REQ] != nr );
+  wire       dmemreq_msg_rw_Dhl  = ( csA[`RISCV_INST_MSG_MEM_REQ] == st );
+  wire [1:0] dmemreq_msg_len_Dhl = csA[`RISCV_INST_MSG_MEM_LEN];
+  wire       dmemreq_val_Dhl     = ( csA[`RISCV_INST_MSG_MEM_REQ] != nr );
 
   // Memory response mux select
 
-  wire [2:0] dmemresp_mux_sel_Dhl = cs0[`RISCV_INST_MSG_MEM_SEL];
+  wire [2:0] dmemresp_mux_sel_Dhl = csA[`RISCV_INST_MSG_MEM_SEL];
 
   // Writeback Mux Select
 
-  wire memex_mux_sel_Dhl = cs0[`RISCV_INST_MSG_WB_SEL];
+  wire memex_mux_sel_Dhl = csA[`RISCV_INST_MSG_WB_SEL];
 
   // Register Writeback Controls
 
-  wire rf0_wen_Dhl         = cs0[`RISCV_INST_MSG_RF_WEN];
-  wire [4:0] rf0_waddr_Dhl = cs0[`RISCV_INST_MSG_RF_WADDR];
+  wire rf0_wen_Dhl         = csA[`RISCV_INST_MSG_RF_WEN];
+  wire [4:0] rf0_waddr_Dhl = csA[`RISCV_INST_MSG_RF_WADDR];
 
   // CSR register write enable
 
-  wire csr_wen_Dhl = cs0[`RISCV_INST_MSG_CSR_WEN];
+  wire csr_wen_Dhl = csA[`RISCV_INST_MSG_CSR_WEN];
 
   // CSR register address
 
@@ -919,11 +960,16 @@ module riscv_CoreCtrl
 
   // Aggregate Stall Signal
 
-  assign stall_Dhl = (stall_X0hl || stall_0_muldiv_use_Dhl || stall_0_load_use_Dhl);
+  wire       stall_0_Dhl = stall_0_load_use_Dhl || stall_0_muldiv_use_Dhl;
+  wire       stall_1_Dhl = stall_1_load_use_Dhl || stall_1_muldiv_use_Dhl;
+
+  wire stall_inst_Dhl = (steering_mux_sel_Dhl == 1'b0) ? stall_0_Dhl : stall_1_Dhl;
+
+  assign stall_Dhl = stall_X0hl || stall_inst_Dhl;
 
   // Next bubble bit
 
-  wire bubble_sel_Dhl  = ( squash_Dhl || stall_0_Dhl );
+  wire bubble_sel_Dhl  = ( squash_Dhl || stall_Dhl );
   wire bubble_next_Dhl = ( !bubble_sel_Dhl ) ? bubble_Dhl
                        : ( bubble_sel_Dhl )  ? 1'b1
                        :                       1'bx;
@@ -991,6 +1037,9 @@ module riscv_CoreCtrl
   // Is the current stage valid?
 
   wire inst_val_X0hl = ( !bubble_X0hl && !squash_X0hl );
+
+  assign aluA_fn_X0hl = alu0_fn_X0hl;
+  assign aluB_fn_X0hl = 4'b0;
 
   // Muldiv request
 
@@ -1285,7 +1334,10 @@ module riscv_CoreCtrl
 
   // Only set register file wen if stage is valid
 
-  assign rf0_wen_out_Whl = ( inst_val_Whl && !stall_Whl && rf0_wen_Whl );
+  assign rfA_wen_out_Whl = ( inst_val_Whl && !stall_Whl && rf0_wen_Whl );
+  assign rfA_waddr_Whl = rf0_waddr_Whl;
+  assign rfB_wen_out_Whl = 1'b0;
+  assign rfB_addr_Whl = 5'b0;
 
   // Dummy squash and stall signals
 
