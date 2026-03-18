@@ -159,11 +159,11 @@ module riscv_CoreCtrl
 
   // Stall in F if D is stalled
 
-  assign stall_Fhl = ((steering_mux_sel_Dhl == 1'b0) && inst_val_Dhl && !squash_Dhl) || stall_Dhl;
+  assign stall_Fhl = stall_Dhl;
 
   // Next bubble bit
 
-  wire bubble_sel_Fhl  = ( squash_Fhl || stall_Fhl );
+  wire bubble_sel_Fhl  = ( squash_Fhl || stall_Fhl || inst1_issued );
   wire bubble_next_Fhl = ( !bubble_sel_Fhl ) ? bubble_Fhl
                        : ( bubble_sel_Fhl )  ? 1'b1
                        :                       1'bx;
@@ -584,7 +584,7 @@ module riscv_CoreCtrl
     else if (squash_Dhl || (inst_val_Dhl && brj_taken_Dhl && steering_mux_sel_Dhl_reg == 1'b0)) begin
       steering_mux_sel_Dhl_reg <= 0;
     end
-    else if (!stall_Dhl) begin
+    else if (!stall_Dhl_hazard && inst_val_Dhl) begin
       steering_mux_sel_Dhl_reg <= ~steering_mux_sel_Dhl_reg;
     end
   end
@@ -616,7 +616,7 @@ module riscv_CoreCtrl
 
   // Jump and Branch Controls
 
-  wire       brj_taken_Dhl = ( inst_val_Dhl && csA[`RISCV_INST_MSG_J_EN] );
+  wire       brj_taken_Dhl = ( !stall_Dhl_hazard && inst_val_Dhl && csA[`RISCV_INST_MSG_J_EN] );
   wire [2:0] br_sel_Dhl    = csA[`RISCV_INST_MSG_BR_SEL];
 
   // PC Mux Select
@@ -956,17 +956,21 @@ module riscv_CoreCtrl
                               && ( rfA_waddr_X1hl != 5'd0 ) && is_load_X1hl ) );
 
   // Aggregate Stall Signal
+  wire stall_0_Dhl = stall_0_load_use_Dhl || stall_0_muldiv_use_Dhl;
+  wire stall_1_Dhl = stall_1_load_use_Dhl || stall_1_muldiv_use_Dhl;
+  wire stall_inst_Dhl = inst_val_Dhl ? ((steering_mux_sel_Dhl == 1'b0) ? stall_0_Dhl : stall_1_Dhl) : 1'b0;
+  
+  wire stall_Dhl_hazard = stall_X0hl || stall_inst_Dhl;
+  wire stall_steering_Dhl = (steering_mux_sel_Dhl == 1'b0) && inst_val_Dhl && !squash_Dhl;
+  
+  assign stall_Dhl = stall_Dhl_hazard || stall_steering_Dhl;
 
-  wire       stall_0_Dhl = stall_0_load_use_Dhl || stall_0_muldiv_use_Dhl;
-  wire       stall_1_Dhl = stall_1_load_use_Dhl || stall_1_muldiv_use_Dhl;
-
-  wire stall_inst_Dhl = (steering_mux_sel_Dhl == 1'b0) ? stall_0_Dhl : stall_1_Dhl;
-
-  assign stall_Dhl = stall_X0hl || stall_inst_Dhl;
+  // Detect when inst1 successfully issues
+  wire inst1_issued = (steering_mux_sel_Dhl == 1'b1) && inst_val_Dhl && !stall_Dhl_hazard && !squash_Dhl;
 
   // Next bubble bit
 
-  wire bubble_sel_Dhl  = ( squash_Dhl || stall_Dhl );
+  wire bubble_sel_Dhl  = ( squash_Dhl || stall_Dhl_hazard );
   wire bubble_next_Dhl = ( !bubble_sel_Dhl ) ? bubble_Dhl
                        : ( bubble_sel_Dhl )  ? 1'b1
                        :                       1'bx;
