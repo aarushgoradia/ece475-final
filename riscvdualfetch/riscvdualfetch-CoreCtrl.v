@@ -70,8 +70,8 @@ module riscv_CoreCtrl
   output        stall_X0hl,
   output        stall_X1hl,
   output        stall_X2hl,
-  output reg       stall_X3hl,
-  output reg       stall_Whl,
+  output        stall_X3hl,
+  output        stall_Whl,
 
   // Control Signals (dpath->ctrl)
 
@@ -581,10 +581,10 @@ module riscv_CoreCtrl
     if (reset) begin
       steering_mux_sel_Dhl_reg <= 0;
     end
-    if (squash_Dhl) begin
+    else if (squash_Dhl || (inst_val_Dhl && brj_taken_Dhl && steering_mux_sel_Dhl_reg == 1'b0)) begin
       steering_mux_sel_Dhl_reg <= 0;
     end
-    if (!stall_Dhl) begin
+    else if (!stall_Dhl) begin
       steering_mux_sel_Dhl_reg <= ~steering_mux_sel_Dhl_reg;
     end
   end
@@ -594,23 +594,20 @@ module riscv_CoreCtrl
   reg [31:0] instA_Dhl_reg;
   reg [cs_sz-1:0] csA;
 
-  // reg instA_val_Dhl;
-  // reg instB_val_Dhl;
-
   always @(*)
   begin
-    csA <= {cs_sz{1'bx}};
-    instA_Dhl_reg <= 32'bx;
+    csA = {cs_sz{1'bx}};
+    instA_Dhl_reg = 32'bx;
 
     if ( steering_mux_sel_Dhl == 1'b0 )
     begin
-      csA <= cs0;
-      instA_Dhl_reg <= ir0_Dhl;
+      csA = cs0;
+      instA_Dhl_reg = ir0_Dhl;
     end
     else if ( steering_mux_sel_Dhl == 1'b1 )
     begin
-      csA <= cs1;
-      instA_Dhl_reg <= ir1_Dhl;
+      csA = cs1;
+      instA_Dhl_reg = ir1_Dhl;
     end
   end
 
@@ -634,11 +631,11 @@ module riscv_CoreCtrl
   wire [4:0] rs11_addr_Dhl  = inst1_rs1_Dhl;
   wire [4:0] rs21_addr_Dhl  = inst1_rs2_Dhl;
 
-  wire       rs10_en_Dhl    = csA[`RISCV_INST_MSG_RS_EN];
-  wire       rs20_en_Dhl    = csA[`RISCV_INST_MSG_RT_EN];
+  wire       rs10_en_Dhl    = csA[`RISCV_INST_MSG_RS1_EN];
+  wire       rs20_en_Dhl    = csA[`RISCV_INST_MSG_RS2_EN];
 
-  wire       rs11_en_Dhl    = cs1[`RISCV_INST_MSG_RS_EN];
-  wire       rs21_en_Dhl    = cs1[`RISCV_INST_MSG_RT_EN];
+  wire       rs11_en_Dhl    = cs1[`RISCV_INST_MSG_RS1_EN];
+  wire       rs21_en_Dhl    = cs1[`RISCV_INST_MSG_RS2_EN];
 
   // For Part 2 and Optionaly Part 1, replace the following control logic with a scoreboard
 
@@ -809,12 +806,12 @@ module riscv_CoreCtrl
   assign opA0_byp_mux_sel_Dhl = op00_byp_mux_sel_Dhl;
   assign opA0_mux_sel_Dhl = op00_mux_sel_Dhl;
   assign opA1_byp_mux_sel_Dhl = op01_byp_mux_sel_Dhl;
-  assign opA1_byp_mux_Dhl = op01_mux_sel_Dhl;
+  assign opA1_mux_sel_Dhl = op01_mux_sel_Dhl;
 
   assign opB0_byp_mux_sel_Dhl = 4'd0;
   assign opB0_mux_sel_Dhl = 2'd0;
   assign opB1_byp_mux_sel_Dhl = 4'd0;
-  assign opB1_byp_mux_Dhl = 3'd0;
+  assign opB1_mux_sel_Dhl = 3'd0;
 
   // ALU Function
 
@@ -861,7 +858,7 @@ module riscv_CoreCtrl
 
   // CSR register address
 
-  wire [11:0] csr_addr_Dhl  = ir0_Dhl[31:20];
+  wire [11:0] csr_addr_Dhl  = instA_Dhl[31:20];
 
   //----------------------------------------------------------------------
   // Squash and Stall Logic
@@ -1037,6 +1034,17 @@ module riscv_CoreCtrl
   // Is the current stage valid?
 
   wire inst_val_X0hl = ( !bubble_X0hl && !squash_X0hl );
+
+  // Pipeline A rf aliases
+  wire        rfA_wen_X0hl   = rf0_wen_X0hl;
+  wire  [4:0] rfA_waddr_X0hl = rf0_waddr_X0hl;
+  wire        rfA_wen_X1hl   = rf0_wen_X1hl;
+  wire  [4:0] rfA_waddr_X1hl = rf0_waddr_X1hl;
+  wire        rfA_wen_X2hl   = rf0_wen_X2hl;
+  wire  [4:0] rfA_waddr_X2hl = rf0_waddr_X2hl;
+  wire        rfA_wen_X3hl   = rf0_wen_X3hl;
+  wire  [4:0] rfA_waddr_X3hl = rf0_waddr_X3hl;
+  wire        rfA_wen_Whl    = rf0_wen_Whl;
 
   assign aluA_fn_X0hl = alu0_fn_X0hl;
   assign aluB_fn_X0hl = 4'b0;
@@ -1337,7 +1345,7 @@ module riscv_CoreCtrl
   assign rfA_wen_out_Whl = ( inst_val_Whl && !stall_Whl && rf0_wen_Whl );
   assign rfA_waddr_Whl = rf0_waddr_Whl;
   assign rfB_wen_out_Whl = 1'b0;
-  assign rfB_addr_Whl = 5'b0;
+  assign rfB_waddr_Whl = 5'b0;
 
   // Dummy squash and stall signals
 
@@ -1376,6 +1384,16 @@ module riscv_CoreCtrl
 //========================================================================
 // Disassemble instructions
 //========================================================================
+  wire [31:0] irA_X0hl = ir0_X0hl;
+  wire [31:0] irA_X1hl = ir0_X1hl;
+  wire [31:0] irA_X2hl = ir0_X2hl;
+  wire [31:0] irA_X3hl = ir0_X3hl;
+  wire [31:0] irA_Whl  = ir0_Whl;
+  wire [31:0] irB_X0hl = 32'b0;
+  wire [31:0] irB_X1hl = 32'b0;
+  wire [31:0] irB_X2hl = 32'b0;
+  wire [31:0] irB_X3hl = 32'b0;
+  wire [31:0] irB_Whl  = 32'b0;
 
   `ifndef SYNTHESIS
 
@@ -1462,8 +1480,7 @@ module riscv_CoreCtrl
   reg overload = 1'b0;
 
   always @ ( posedge clk ) begin
-    if (( !cs0[`RISCV_INST_MSG_INST_VAL] && !reset ) 
-     || ( !cs1[`RISCV_INST_MSG_INST_VAL] && !reset )) begin
+    if ( !csA[`RISCV_INST_MSG_INST_VAL] && !reset ) begin
       $display(" RTL-ERROR : %m : Illegal instruction!");
 
       if ( overload == 1'b1 ) begin
