@@ -163,7 +163,7 @@ module riscv_CoreCtrl
 
   // Next bubble bit
 
-  wire bubble_sel_Fhl  = ( squash_Fhl || stall_Fhl || inst1_issued );
+  wire bubble_sel_Fhl  = ( squash_Fhl || stall_Fhl );
   wire bubble_next_Fhl = ( !bubble_sel_Fhl ) ? bubble_Fhl
                        : ( bubble_sel_Fhl )  ? 1'b1
                        :                       1'bx;
@@ -577,15 +577,40 @@ module riscv_CoreCtrl
 
   reg steering_mux_sel_Dhl_reg;
 
+  // always @(posedge clk) begin
+  //   if (reset) begin
+  //     steering_mux_sel_Dhl_reg <= 1'b0; // Default to inst0
+  //   end 
+  //   else if (squash_Dhl || brj_taken_Dhl) begin
+  //     steering_mux_sel_Dhl_reg <= 1'b0; // Default to inst0
+  //   end 
+  //   else if (stall_Dhl_hazard || !inst_val_Dhl) begin
+  //     steering_mux_sel_Dhl_reg <= steering_mux_sel_Dhl_reg;
+  //   end
+  //   else begin
+  //     steering_mux_sel_Dhl_reg <= ~steering_mux_sel_Dhl_reg;
+  //   end
+  // end
+
   always @(posedge clk) begin
-    if (reset) begin
-      steering_mux_sel_Dhl_reg <= 0;
+    if ( reset ) begin
+      steering_mux_sel_Dhl_reg <= 1'b0;
     end
-    else if (squash_Dhl || (inst_val_Dhl && brj_taken_Dhl && steering_mux_sel_Dhl_reg == 1'b0)) begin
-      steering_mux_sel_Dhl_reg <= 0;
+    else if ( squash_Dhl || brj_taken_Dhl ) begin
+      // Redirect/flush always restarts at slot0 of next fetch pair
+      steering_mux_sel_Dhl_reg <= 1'b0;
     end
-    else if (!stall_Dhl_hazard && inst_val_Dhl) begin
-      steering_mux_sel_Dhl_reg <= ~steering_mux_sel_Dhl_reg;
+    else if ( issued_slot0_Dhl ) begin
+      // Slot0 issued, now hold pair and issue slot1 next
+      steering_mux_sel_Dhl_reg <= 1'b1;
+    end
+    else if ( issued_slot1_Dhl ) begin
+      // Slot1 issued, pair is done, restart at slot0
+      steering_mux_sel_Dhl_reg <= 1'b0;
+    end
+    else begin
+      // No issue event: hold steering
+      steering_mux_sel_Dhl_reg <= steering_mux_sel_Dhl_reg;
     end
   end
 
@@ -616,7 +641,7 @@ module riscv_CoreCtrl
 
   // Jump and Branch Controls
 
-  wire       brj_taken_Dhl = ( !stall_Dhl_hazard && inst_val_Dhl && csA[`RISCV_INST_MSG_J_EN] );
+  wire       brj_taken_Dhl = ( !stall_Dhl_hazard && inst_val_Dhl && csA[`RISCV_INST_MSG_J_EN] && !squash_Dhl);
   wire [2:0] br_sel_Dhl    = csA[`RISCV_INST_MSG_BR_SEL];
 
   // PC Mux Select
@@ -961,12 +986,17 @@ module riscv_CoreCtrl
   wire stall_inst_Dhl = inst_val_Dhl ? ((steering_mux_sel_Dhl == 1'b0) ? stall_0_Dhl : stall_1_Dhl) : 1'b0;
   
   wire stall_Dhl_hazard = stall_X0hl || stall_inst_Dhl;
-  wire stall_steering_Dhl = (steering_mux_sel_Dhl == 1'b0) && inst_val_Dhl && !squash_Dhl;
-  
-  assign stall_Dhl = stall_Dhl_hazard || stall_steering_Dhl;
 
-  // Detect when inst1 successfully issues
-  wire inst1_issued = (steering_mux_sel_Dhl == 1'b1) && inst_val_Dhl && !stall_Dhl_hazard && !squash_Dhl;
+  // "Current decode instruction really issued into X0 this cycle"
+  wire issue_cur_Dhl = inst_val_Dhl && !squash_Dhl && !stall_Dhl_hazard;
+
+  // Slot-specific issue events
+  wire issued_slot0_Dhl = issue_cur_Dhl && (steering_mux_sel_Dhl == 1'b0) && !brj_taken_Dhl;
+  wire issued_slot1_Dhl = issue_cur_Dhl && (steering_mux_sel_Dhl == 1'b1);
+
+  wire stall_steering_Dhl = issued_slot0_Dhl;
+  // wire stall_steering_Dhl = (steering_mux_sel_Dhl == 1'b0) && inst_val_Dhl && !squash_Dhl && !brj_taken_Dhl;  
+  assign stall_Dhl = stall_Dhl_hazard || stall_steering_Dhl;
 
   // Next bubble bit
 
@@ -1007,7 +1037,7 @@ module riscv_CoreCtrl
       bubble_X0hl <= 1'b1;
     end
     else if( !stall_X0hl ) begin
-      ir0_X0hl              <= ir0_Dhl;
+      ir0_X0hl              <= instA_Dhl;
       br_sel_X0hl           <= br_sel_Dhl;
       alu0_fn_X0hl          <= alu0_fn_Dhl;
       muldivreq_val_X0hl    <= muldivreq_val_Dhl;
