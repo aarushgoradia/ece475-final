@@ -788,7 +788,8 @@ module riscv_CoreCtrl
 
   // Operand Bypass Mux Select
 
-  assign op00_byp_mux_sel_Dhl
+
+  wire [3:0] op00_byp_mux_sel_Dhl
     = (rs10_AX0_byp_Dhl) ? am_AX0_byp
     : (rs10_AX1_byp_Dhl) ? am_AX1_byp
     : (rs10_AX2_byp_Dhl) ? am_AX2_byp
@@ -796,7 +797,7 @@ module riscv_CoreCtrl
     : (rs10_AW_byp_Dhl)  ? am_AW_byp
     :                    am_r0;
 
-  assign op01_byp_mux_sel_Dhl
+  wire [3:0] op01_byp_mux_sel_Dhl
     = (rs20_AX0_byp_Dhl) ? bm_AX0_byp
     : (rs20_AX1_byp_Dhl) ? bm_AX1_byp
     : (rs20_AX2_byp_Dhl) ? bm_AX2_byp
@@ -804,7 +805,7 @@ module riscv_CoreCtrl
     : (rs20_AW_byp_Dhl)  ? bm_AW_byp
     :                     bm_r1;
 
-  assign op10_byp_mux_sel_Dhl
+  wire [3:0] op10_byp_mux_sel_Dhl
     = (rs11_AX0_byp_Dhl) ? am_AX0_byp
     : (rs11_AX1_byp_Dhl) ? am_AX1_byp
     : (rs11_AX2_byp_Dhl) ? am_AX2_byp
@@ -812,7 +813,7 @@ module riscv_CoreCtrl
     : (rs11_AW_byp_Dhl) ? am_AW_byp
     :                    am_r0;
 
-  assign op11_byp_mux_sel_Dhl
+  wire [3:0] op11_byp_mux_sel_Dhl
     = (rs21_AX0_byp_Dhl) ? bm_AX0_byp
     : (rs21_AX1_byp_Dhl) ? bm_AX1_byp
     : (rs21_AX2_byp_Dhl) ? bm_AX2_byp
