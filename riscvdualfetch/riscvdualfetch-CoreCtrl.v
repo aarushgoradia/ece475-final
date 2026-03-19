@@ -577,21 +577,6 @@ module riscv_CoreCtrl
 
   reg steering_mux_sel_Dhl_reg;
 
-  // always @(posedge clk) begin
-  //   if (reset) begin
-  //     steering_mux_sel_Dhl_reg <= 1'b0; // Default to inst0
-  //   end 
-  //   else if (squash_Dhl || brj_taken_Dhl) begin
-  //     steering_mux_sel_Dhl_reg <= 1'b0; // Default to inst0
-  //   end 
-  //   else if (stall_Dhl_hazard || !inst_val_Dhl) begin
-  //     steering_mux_sel_Dhl_reg <= steering_mux_sel_Dhl_reg;
-  //   end
-  //   else begin
-  //     steering_mux_sel_Dhl_reg <= ~steering_mux_sel_Dhl_reg;
-  //   end
-  // end
-
   always @(posedge clk) begin
     if ( reset ) begin
       steering_mux_sel_Dhl_reg <= 1'b0;
@@ -996,7 +981,6 @@ module riscv_CoreCtrl
   wire issued_slot1_Dhl = issue_cur_Dhl && (steering_mux_sel_Dhl == 1'b1);
 
   wire stall_steering_Dhl = issued_slot0_Dhl;
-  // wire stall_steering_Dhl = (steering_mux_sel_Dhl == 1'b0) && inst_val_Dhl && !squash_Dhl && !brj_taken_Dhl;  
   assign stall_Dhl = stall_Dhl_hazard || stall_steering_Dhl;
 
   // Next bubble bit
