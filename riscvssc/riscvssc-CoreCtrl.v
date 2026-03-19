@@ -1484,6 +1484,9 @@ module riscv_CoreCtrl
         // FIXME: fix this when you can have at most two instructions issued per cycle!
         if ( inst_val_Dhl && !stall_Dhl ) begin
           num_inst = num_inst + 1;
+          if (dual_issue) begin
+            num_inst = num_inst + 1;
+          end
         end
 
       end
