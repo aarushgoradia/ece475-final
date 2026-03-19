@@ -714,7 +714,7 @@ module riscv_CoreCtrl
   wire [0:4] is_muldiv_by_stage = {is_muldiv_X0hl, is_muldiv_X1hl, is_muldiv_X2hl, is_muldiv_X3hl, 1'b0};
 
   wire [3:0] op00_byp_mux_sel_Dhl 
-    = (!sb_rs10_valid) ? am_r0 
+    = (!sb_rs10_val) ? am_r0 
     : (sb_rs10_stage == 3'd0) ? am_AX0_byp 
     : (sb_rs10_stage == 3'd1) ? am_AX1_byp 
     : (sb_rs10_stage == 3'd2) ? am_AX2_byp 
@@ -723,7 +723,7 @@ module riscv_CoreCtrl
     : am_r0;
 
   wire [3:0] op01_byp_mux_sel_Dhl 
-    = (!sb_rs20_valid) ? am_r1 
+    = (!sb_rs20_val) ? am_r1 
     : (sb_rs20_stage == 3'd0) ? am_AX0_byp 
     : (sb_rs20_stage == 3'd1) ? am_AX1_byp 
     : (sb_rs20_stage == 3'd2) ? am_AX2_byp 
@@ -732,7 +732,7 @@ module riscv_CoreCtrl
     : am_r1;
 
   wire [3:0] op10_byp_mux_sel_Dhl 
-    = (!sb_rs11_valid) ? am_r0 
+    = (!sb_rs11_val) ? am_r0 
     : (sb_rs11_stage == 3'd0) ? am_AX0_byp 
     : (sb_rs11_stage == 3'd1) ? am_AX1_byp 
     : (sb_rs11_stage == 3'd2) ? am_AX2_byp 
@@ -741,7 +741,7 @@ module riscv_CoreCtrl
     : am_r0;
 
   wire [3:0] op11_byp_mux_sel_Dhl 
-    = (!sb_rs21_valid) ? am_r1 
+    = (!sb_rs21_val) ? am_r1 
     : (sb_rs21_stage == 3'd0) ? am_AX0_byp 
     : (sb_rs21_stage == 3'd1) ? am_AX1_byp 
     : (sb_rs21_stage == 3'd2) ? am_AX2_byp 
