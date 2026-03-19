@@ -682,7 +682,7 @@ module riscv_CoreCtrl
         end
       end
 
-      if ( inst_val_Dhl && !stall_Dhl && rf0_wen_Dhl && rf0_waddr_Dhl != 0) begin
+      if ( inst_val_Dhl && !stall_Dhl_hazard && !squash_Dhl && rf0_wen_Dhl && rf0_waddr_Dhl != 0) begin
           scoreboard[rf0_waddr_Dhl] <= {1'b1, 1'b0, 3'd0};
       end
     end
@@ -723,13 +723,13 @@ module riscv_CoreCtrl
     : am_r0;
 
   wire [3:0] op01_byp_mux_sel_Dhl 
-    = (!sb_rs20_val) ? am_r1 
-    : (sb_rs20_stage == 3'd0) ? am_AX0_byp 
-    : (sb_rs20_stage == 3'd1) ? am_AX1_byp 
-    : (sb_rs20_stage == 3'd2) ? am_AX2_byp 
-    : (sb_rs20_stage == 3'd3) ? am_AX3_byp 
-    : (sb_rs20_stage == 3'd4) ? am_AW_byp 
-    : am_r1;
+    = (!sb_rs20_val) ? bm_r1 
+    : (sb_rs20_stage == 3'd0) ? bm_AX0_byp 
+    : (sb_rs20_stage == 3'd1) ? bm_AX1_byp 
+    : (sb_rs20_stage == 3'd2) ? bm_AX2_byp 
+    : (sb_rs20_stage == 3'd3) ? bm_AX3_byp 
+    : (sb_rs20_stage == 3'd4) ? bm_AW_byp 
+    : bm_r1;
 
   wire [3:0] op10_byp_mux_sel_Dhl 
     = (!sb_rs11_val) ? am_r0 
@@ -741,13 +741,13 @@ module riscv_CoreCtrl
     : am_r0;
 
   wire [3:0] op11_byp_mux_sel_Dhl 
-    = (!sb_rs21_val) ? am_r1 
-    : (sb_rs21_stage == 3'd0) ? am_AX0_byp 
-    : (sb_rs21_stage == 3'd1) ? am_AX1_byp 
-    : (sb_rs21_stage == 3'd2) ? am_AX2_byp 
-    : (sb_rs21_stage == 3'd3) ? am_AX3_byp 
-    : (sb_rs21_stage == 3'd4) ? am_AW_byp 
-    : am_r1;
+    = (!sb_rs21_val) ? bm_r1 
+    : (sb_rs21_stage == 3'd0) ? bm_AX0_byp 
+    : (sb_rs21_stage == 3'd1) ? bm_AX1_byp 
+    : (sb_rs21_stage == 3'd2) ? bm_AX2_byp 
+    : (sb_rs21_stage == 3'd3) ? bm_AX3_byp 
+    : (sb_rs21_stage == 3'd4) ? bm_AW_byp 
+    : bm_r1;
 
   wire stall_0_load_use_Dhl = inst_val_Dhl && (
     (sb_rs10_val && sb_rs10_stage < 3'd2 && is_load_by_stage[sb_rs10_stage]) ||
