@@ -608,7 +608,12 @@ module riscv_CoreCtrl
   wire struct_hazard = inst0_val_hz && inst1_val_hz
       && !inst0_is_alu && !inst1_is_alu;
 
-  wire pair_hazard = raw_hazard || waw_hazard || struct_hazard;
+
+  wire inst0_is_br = (cs0[`RISCV_INST_MSG_BR_SEL] != br_none) || cs0[`RISCV_INST_MSG_J_EN];
+  wire inst1_is_br = (cs1[`RISCV_INST_MSG_BR_SEL] != br_none) || cs1[`RISCV_INST_MSG_J_EN];
+  wire branch_in_pair = inst0_is_br || inst1_is_br;
+
+  wire pair_hazard = raw_hazard || waw_hazard || struct_hazard || branch_in_pair;
   wire swap = inst0_is_alu && !inst1_is_alu;
 
   // wire dual_issue = inst0_val_hz && inst1_val_hz
@@ -617,7 +622,33 @@ module riscv_CoreCtrl
   //   && !squash_Dhl && !stall_X0hl
   //   && (steering_mux_sel_Dhl == 1'b0);
 
-  wire dual_issue = 1'b0;
+  // wire dual_issue = 1'b0;
+
+  // Stall checks for dual-issue eligibility (independent of csA)
+  wire [4:0] sb_inst0_rs1 = (cs0[`RISCV_INST_MSG_RS1_EN] && inst0_rs1_Dhl != 5'd0) ? scoreboard[inst0_rs1_Dhl] : 5'b0;
+  wire [4:0] sb_inst0_rs2 = (cs0[`RISCV_INST_MSG_RS2_EN] && inst0_rs2_Dhl != 5'd0) ? scoreboard[inst0_rs2_Dhl] : 5'b0;
+  wire [4:0] sb_inst1_rs1 = (cs1[`RISCV_INST_MSG_RS1_EN] && inst1_rs1_Dhl != 5'd0) ? scoreboard[inst1_rs1_Dhl] : 5'b0;
+  wire [4:0] sb_inst1_rs2 = (cs1[`RISCV_INST_MSG_RS2_EN] && inst1_rs2_Dhl != 5'd0) ? scoreboard[inst1_rs2_Dhl] : 5'b0;
+
+  wire stall_inst0 = inst_val_Dhl && (
+      (sb_inst0_rs1[4] && sb_inst0_rs1[2:0] < 3'd2 && is_load_by_stage[sb_inst0_rs1[2:0]]) ||
+      (sb_inst0_rs2[4] && sb_inst0_rs2[2:0] < 3'd2 && is_load_by_stage[sb_inst0_rs2[2:0]]) ||
+      (sb_inst0_rs1[4] && sb_inst0_rs1[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst0_rs1[2:0]]) ||
+      (sb_inst0_rs2[4] && sb_inst0_rs2[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst0_rs2[2:0]])
+  );
+
+  wire stall_inst1 = inst_val_Dhl && (
+      (sb_inst1_rs1[4] && sb_inst1_rs1[2:0] < 3'd2 && is_load_by_stage[sb_inst1_rs1[2:0]]) ||
+      (sb_inst1_rs2[4] && sb_inst1_rs2[2:0] < 3'd2 && is_load_by_stage[sb_inst1_rs2[2:0]]) ||
+      (sb_inst1_rs1[4] && sb_inst1_rs1[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst1_rs1[2:0]]) ||
+      (sb_inst1_rs2[4] && sb_inst1_rs2[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst1_rs2[2:0]])
+  );
+
+  wire dual_issue = inst0_val_hz && inst1_val_hz
+      && !pair_hazard
+      && !stall_inst0 && !stall_inst1
+      && !squash_Dhl && !stall_X0hl
+      && (steering_mux_sel_Dhl_reg == 1'b0);
 
   // TODO: generate your steering signal here!
 
@@ -657,26 +688,22 @@ module riscv_CoreCtrl
     csB = {cs_sz{1'b0}};
     instB_Dhl_reg = 32'b0;
 
-    if (dual_issue) begin
-      if (swap) begin
-        csA = cs1;
-        csB = cs0;
-        instA_Dhl_reg = ir1_Dhl;
-        instB_Dhl_reg = ir0_Dhl;
-      end else begin
-        csA = cs0;
-        csB = cs1;
-        instA_Dhl_reg = ir0_Dhl;
-        instB_Dhl_reg = ir1_Dhl;
-      end
-    end
-    else if (steering_mux_sel_Dhl_reg == 1'b0) begin
+    if (steering_mux_sel_Dhl_reg == 1'b0) begin
       csA = cs0;
       instA_Dhl_reg = ir0_Dhl;
-    end
-    else begin
+    end else begin
       csA = cs1;
       instA_Dhl_reg = ir1_Dhl;
+    end
+
+    if (dual_issue && swap) begin
+      csA = cs1;
+      instA_Dhl_reg = ir1_Dhl;
+      csB = cs0;
+      instB_Dhl_reg = ir0_Dhl;
+    end else if (dual_issue) begin
+      csB = cs1;
+      instB_Dhl_reg = ir1_Dhl;
     end
   end
 
