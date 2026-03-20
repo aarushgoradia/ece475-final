@@ -611,58 +611,77 @@ module riscv_CoreCtrl
   wire pair_hazard = raw_hazard || waw_hazard || struct_hazard;
   wire swap = inst0_is_alu && !inst1_is_alu;
 
-  wire dual_issue = 1'b0; // DISABLED FOR NOW
+  // wire dual_issue = inst0_val_hz && inst1_val_hz
+  //   && !pair_hazard
+  //   && !stall_0_Dhl && !stall_1_Dhl
+  //   && !squash_Dhl && !stall_X0hl
+  //   && (steering_mux_sel_Dhl == 1'b0);
+
+  wire dual_issue = 1'b0;
 
   // TODO: generate your steering signal here!
 
   reg steering_mux_sel_Dhl_reg;
 
   always @(posedge clk) begin
-    if ( reset ) begin
+    if (reset) begin
       steering_mux_sel_Dhl_reg <= 1'b0;
     end
-    else if ( squash_Dhl || brj_taken_Dhl ) begin
-      // Redirect/flush always restarts at slot0 of next fetch pair
+    else if (squash_Dhl || brj_taken_Dhl) begin
       steering_mux_sel_Dhl_reg <= 1'b0;
     end
-    else if ( issued_slot0_Dhl ) begin
-      // Slot0 issued, now hold pair and issue slot1 next
+    else if (dual_issue) begin
+      steering_mux_sel_Dhl_reg <= 1'b0;
+    end
+    else if (issued_slot0_Dhl) begin
       steering_mux_sel_Dhl_reg <= 1'b1;
     end
-    else if ( issued_slot1_Dhl ) begin
-      // Slot1 issued, pair is done, restart at slot0
+    else if (issued_slot1_Dhl) begin
       steering_mux_sel_Dhl_reg <= 1'b0;
     end
     else begin
-      // No issue event: hold steering
       steering_mux_sel_Dhl_reg <= steering_mux_sel_Dhl_reg;
     end
   end
 
-  assign steering_mux_sel_Dhl = steering_mux_sel_Dhl_reg;
+  assign steering_mux_sel_Dhl = (dual_issue && swap) ? 1'b1 : steering_mux_sel_Dhl_reg;
 
   reg [31:0] instA_Dhl_reg;
   reg [cs_sz-1:0] csA;
+  reg [cs_sz-1:0] csB;
+  reg [31:0] instB_Dhl_reg;
 
-  always @(*)
-  begin
+  always @(*) begin
     csA = {cs_sz{1'bx}};
     instA_Dhl_reg = 32'bx;
+    csB = {cs_sz{1'b0}};
+    instB_Dhl_reg = 32'b0;
 
-    if ( steering_mux_sel_Dhl == 1'b0 )
-    begin
+    if (dual_issue) begin
+      if (swap) begin
+        csA = cs1;
+        csB = cs0;
+        instA_Dhl_reg = ir1_Dhl;
+        instB_Dhl_reg = ir0_Dhl;
+      end else begin
+        csA = cs0;
+        csB = cs1;
+        instA_Dhl_reg = ir0_Dhl;
+        instB_Dhl_reg = ir1_Dhl;
+      end
+    end
+    else if (steering_mux_sel_Dhl_reg == 1'b0) begin
       csA = cs0;
       instA_Dhl_reg = ir0_Dhl;
     end
-    else if ( steering_mux_sel_Dhl == 1'b1 )
-    begin
+    else begin
       csA = cs1;
       instA_Dhl_reg = ir1_Dhl;
     end
   end
 
   assign instA_Dhl = instA_Dhl_reg;
-  assign instB_Dhl = 32'b0;
+  assign instB_Dhl = instB_Dhl_reg;
 
   // Jump and Branch Controls
 
@@ -722,8 +741,14 @@ module riscv_CoreCtrl
         end
       end
 
+      // Pipe A
       if ( inst_val_Dhl && !stall_Dhl_hazard && !squash_Dhl && rf0_wen_Dhl && rf0_waddr_Dhl != 0) begin
           scoreboard[rf0_waddr_Dhl] <= {1'b1, 1'b0, 3'd0};
+      end
+      
+      // Pipe B
+      if (dual_issue && csB[`RISCV_INST_MSG_RF_WEN] && csB[`RISCV_INST_MSG_RF_WADDR] != 5'd0) begin
+          scoreboard[csB[`RISCV_INST_MSG_RF_WADDR]] <= {1'b1, 1'b1, 3'd0};
       end
     end
   end
@@ -753,41 +778,61 @@ module riscv_CoreCtrl
   wire [0:4] is_load_by_stage = {is_load_X0hl, is_load_X1hl, 1'b0, 1'b0, 1'b0};
   wire [0:4] is_muldiv_by_stage = {is_muldiv_X0hl, is_muldiv_X1hl, is_muldiv_X2hl, is_muldiv_X3hl, 1'b0};
 
-  wire [3:0] op00_byp_mux_sel_Dhl 
-    = (!sb_rs10_val) ? am_r0 
-    : (sb_rs10_stage == 3'd0) ? am_AX0_byp 
-    : (sb_rs10_stage == 3'd1) ? am_AX1_byp 
-    : (sb_rs10_stage == 3'd2) ? am_AX2_byp 
-    : (sb_rs10_stage == 3'd3) ? am_AX3_byp 
-    : (sb_rs10_stage == 3'd4) ? am_AW_byp 
-    : am_r0;
+  wire [3:0] op00_byp_mux_sel_Dhl
+    = (!sb_rs10_val)                            ? am_r0
+    : (sb_rs10_stage == 3'd0 && !sb_rs10_pipe)  ? am_AX0_byp
+    : (sb_rs10_stage == 3'd0 &&  sb_rs10_pipe)  ? am_BX0_byp
+    : (sb_rs10_stage == 3'd1 && !sb_rs10_pipe)  ? am_AX1_byp
+    : (sb_rs10_stage == 3'd1 &&  sb_rs10_pipe)  ? am_BX1_byp
+    : (sb_rs10_stage == 3'd2 && !sb_rs10_pipe)  ? am_AX2_byp
+    : (sb_rs10_stage == 3'd2 &&  sb_rs10_pipe)  ? am_BX2_byp
+    : (sb_rs10_stage == 3'd3 && !sb_rs10_pipe)  ? am_AX3_byp
+    : (sb_rs10_stage == 3'd3 &&  sb_rs10_pipe)  ? am_BX3_byp
+    : (sb_rs10_stage == 3'd4 && !sb_rs10_pipe)  ? am_AW_byp
+    : (sb_rs10_stage == 3'd4 &&  sb_rs10_pipe)  ? am_BW_byp
+    :                                             am_r0;
 
-  wire [3:0] op01_byp_mux_sel_Dhl 
-    = (!sb_rs20_val) ? bm_r1 
-    : (sb_rs20_stage == 3'd0) ? bm_AX0_byp 
-    : (sb_rs20_stage == 3'd1) ? bm_AX1_byp 
-    : (sb_rs20_stage == 3'd2) ? bm_AX2_byp 
-    : (sb_rs20_stage == 3'd3) ? bm_AX3_byp 
-    : (sb_rs20_stage == 3'd4) ? bm_AW_byp 
-    : bm_r1;
+  wire [3:0] op01_byp_mux_sel_Dhl
+    = (!sb_rs20_val)                            ? bm_r1
+    : (sb_rs20_stage == 3'd0 && !sb_rs20_pipe)  ? bm_AX0_byp
+    : (sb_rs20_stage == 3'd0 &&  sb_rs20_pipe)  ? bm_BX0_byp
+    : (sb_rs20_stage == 3'd1 && !sb_rs20_pipe)  ? bm_AX1_byp
+    : (sb_rs20_stage == 3'd1 &&  sb_rs20_pipe)  ? bm_BX1_byp
+    : (sb_rs20_stage == 3'd2 && !sb_rs20_pipe)  ? bm_AX2_byp
+    : (sb_rs20_stage == 3'd2 &&  sb_rs20_pipe)  ? bm_BX2_byp
+    : (sb_rs20_stage == 3'd3 && !sb_rs20_pipe)  ? bm_AX3_byp
+    : (sb_rs20_stage == 3'd3 &&  sb_rs20_pipe)  ? bm_BX3_byp
+    : (sb_rs20_stage == 3'd4 && !sb_rs20_pipe)  ? bm_AW_byp
+    : (sb_rs20_stage == 3'd4 &&  sb_rs20_pipe)  ? bm_BW_byp
+    :                                             bm_r1;
 
-  wire [3:0] op10_byp_mux_sel_Dhl 
-    = (!sb_rs11_val) ? am_r0 
-    : (sb_rs11_stage == 3'd0) ? am_AX0_byp 
-    : (sb_rs11_stage == 3'd1) ? am_AX1_byp 
-    : (sb_rs11_stage == 3'd2) ? am_AX2_byp 
-    : (sb_rs11_stage == 3'd3) ? am_AX3_byp 
-    : (sb_rs11_stage == 3'd4) ? am_AW_byp 
-    : am_r0;
+  wire [3:0] op10_byp_mux_sel_Dhl
+    = (!sb_rs11_val)                            ? am_r0
+    : (sb_rs11_stage == 3'd0 && !sb_rs11_pipe)  ? am_AX0_byp
+    : (sb_rs11_stage == 3'd0 &&  sb_rs11_pipe)  ? am_BX0_byp
+    : (sb_rs11_stage == 3'd1 && !sb_rs11_pipe)  ? am_AX1_byp
+    : (sb_rs11_stage == 3'd1 &&  sb_rs11_pipe)  ? am_BX1_byp
+    : (sb_rs11_stage == 3'd2 && !sb_rs11_pipe)  ? am_AX2_byp
+    : (sb_rs11_stage == 3'd2 &&  sb_rs11_pipe)  ? am_BX2_byp
+    : (sb_rs11_stage == 3'd3 && !sb_rs11_pipe)  ? am_AX3_byp
+    : (sb_rs11_stage == 3'd3 &&  sb_rs11_pipe)  ? am_BX3_byp
+    : (sb_rs11_stage == 3'd4 && !sb_rs11_pipe)  ? am_AW_byp
+    : (sb_rs11_stage == 3'd4 &&  sb_rs11_pipe)  ? am_BW_byp
+    :                                             am_r0;
 
-  wire [3:0] op11_byp_mux_sel_Dhl 
-    = (!sb_rs21_val) ? bm_r1 
-    : (sb_rs21_stage == 3'd0) ? bm_AX0_byp 
-    : (sb_rs21_stage == 3'd1) ? bm_AX1_byp 
-    : (sb_rs21_stage == 3'd2) ? bm_AX2_byp 
-    : (sb_rs21_stage == 3'd3) ? bm_AX3_byp 
-    : (sb_rs21_stage == 3'd4) ? bm_AW_byp 
-    : bm_r1;
+  wire [3:0] op11_byp_mux_sel_Dhl
+    = (!sb_rs21_val)                            ? bm_r1
+    : (sb_rs21_stage == 3'd0 && !sb_rs21_pipe)  ? bm_AX0_byp
+    : (sb_rs21_stage == 3'd0 &&  sb_rs21_pipe)  ? bm_BX0_byp
+    : (sb_rs21_stage == 3'd1 && !sb_rs21_pipe)  ? bm_AX1_byp
+    : (sb_rs21_stage == 3'd1 &&  sb_rs21_pipe)  ? bm_BX1_byp
+    : (sb_rs21_stage == 3'd2 && !sb_rs21_pipe)  ? bm_AX2_byp
+    : (sb_rs21_stage == 3'd2 &&  sb_rs21_pipe)  ? bm_BX2_byp
+    : (sb_rs21_stage == 3'd3 && !sb_rs21_pipe)  ? bm_AX3_byp
+    : (sb_rs21_stage == 3'd3 &&  sb_rs21_pipe)  ? bm_BX3_byp
+    : (sb_rs21_stage == 3'd4 && !sb_rs21_pipe)  ? bm_AW_byp
+    : (sb_rs21_stage == 3'd4 &&  sb_rs21_pipe)  ? bm_BW_byp
+    :                                             bm_r1;
 
   wire stall_0_load_use_Dhl = inst_val_Dhl && (
     (sb_rs10_val && sb_rs10_stage < 3'd2 && is_load_by_stage[sb_rs10_stage]) ||
@@ -823,10 +868,10 @@ module riscv_CoreCtrl
   assign opA1_byp_mux_sel_Dhl = op01_byp_mux_sel_Dhl;
   assign opA1_mux_sel_Dhl = op01_mux_sel_Dhl;
 
-  assign opB0_byp_mux_sel_Dhl = 4'd0;
-  assign opB0_mux_sel_Dhl = 2'd0;
-  assign opB1_byp_mux_sel_Dhl = 4'd0;
-  assign opB1_mux_sel_Dhl = 3'd0;
+  assign opB0_byp_mux_sel_Dhl = dual_issue ? op10_byp_mux_sel_Dhl : 4'd0;
+  assign opB0_mux_sel_Dhl     = dual_issue ? csB[`RISCV_INST_MSG_OP0_SEL] : 2'd0;
+  assign opB1_byp_mux_sel_Dhl = dual_issue ? op11_byp_mux_sel_Dhl : 4'd0;
+  assign opB1_mux_sel_Dhl     = dual_issue ? csB[`RISCV_INST_MSG_OP1_SEL] : 3'd0;
 
   // ALU Function
 
@@ -901,7 +946,7 @@ module riscv_CoreCtrl
   wire issued_slot0_Dhl = issue_cur_Dhl && (steering_mux_sel_Dhl == 1'b0) && !brj_taken_Dhl;
   wire issued_slot1_Dhl = issue_cur_Dhl && (steering_mux_sel_Dhl == 1'b1);
 
-  wire stall_steering_Dhl = issued_slot0_Dhl;
+  wire stall_steering_Dhl = issued_slot0_Dhl && !dual_issue;
   assign stall_Dhl = stall_Dhl_hazard || stall_steering_Dhl;
 
   // Next bubble bit
@@ -967,10 +1012,10 @@ module riscv_CoreCtrl
       csr_wen_X0hl          <= csr_wen_Dhl;
       csr_addr_X0hl         <= csr_addr_Dhl;
 
-      rf1_wen_X0hl   <= 1'b0;
-      rf1_waddr_X0hl <= 5'd0;
-      alu1_fn_X0hl   <= 4'd0;
-      ir1_X0hl       <= 32'b0;
+      rf1_wen_X0hl   <= dual_issue ? csB[`RISCV_INST_MSG_RF_WEN] : 1'b0;
+      rf1_waddr_X0hl <= dual_issue ? csB[`RISCV_INST_MSG_RF_WADDR] : 5'd0;
+      alu1_fn_X0hl   <= dual_issue ? csB[`RISCV_INST_MSG_ALU_FN] : 4'd0;
+      ir1_X0hl       <= instB_Dhl;
 
       bubble_X0hl           <= bubble_next_Dhl;
     end
@@ -1326,8 +1371,8 @@ module riscv_CoreCtrl
 
   assign rfA_wen_out_Whl = ( inst_val_Whl && !stall_Whl && rf0_wen_Whl );
   assign rfA_waddr_Whl = rf0_waddr_Whl;
-  assign rfB_wen_out_Whl = 1'b0;
-  assign rfB_waddr_Whl = 5'b0;
+  assign rfB_wen_out_Whl = (inst_val_Whl && !stall_Whl && rf1_wen_Whl);
+  assign rfB_waddr_Whl = rf1_waddr_Whl;
 
   // Dummy squash and stall signals
 
@@ -1501,6 +1546,9 @@ module riscv_CoreCtrl
         // FIXME: fix this when you can have at most two instructions issued per cycle!
         if ( inst_val_Dhl && !stall_Dhl ) begin
           num_inst = num_inst + 1;
+          if (dual_issue) begin
+            num_inst = num_inst + 1;
+          end
         end
 
       end
