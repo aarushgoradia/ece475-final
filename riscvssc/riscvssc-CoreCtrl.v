@@ -894,6 +894,11 @@ module riscv_CoreCtrl
   reg        csr_wen_X0hl;
   reg [11:0] csr_addr_X0hl;
 
+  reg        rf1_wen_X0hl;
+  reg  [4:0] rf1_waddr_X0hl;
+  reg  [3:0] alu1_fn_X0hl;
+  reg [31:0] ir1_X0hl;
+
   reg        bubble_X0hl;
 
   // Pipeline Controls
@@ -922,6 +927,11 @@ module riscv_CoreCtrl
       csr_wen_X0hl          <= csr_wen_Dhl;
       csr_addr_X0hl         <= csr_addr_Dhl;
 
+      rf1_wen_X0hl   <= 1'b0;
+      rf1_waddr_X0hl <= 5'd0;
+      alu1_fn_X0hl   <= 4'd0;
+      ir1_X0hl       <= 32'b0;
+
       bubble_X0hl           <= bubble_next_Dhl;
     end
 
@@ -947,7 +957,7 @@ module riscv_CoreCtrl
   wire        rfA_wen_Whl    = rf0_wen_Whl;
 
   assign aluA_fn_X0hl = alu0_fn_X0hl;
-  assign aluB_fn_X0hl = 4'b0;
+  assign aluB_fn_X0hl = alu1_fn_X0hl;
 
   // Muldiv request
 
@@ -1023,6 +1033,10 @@ module riscv_CoreCtrl
   reg        csr_wen_X1hl;
   reg  [4:0] csr_addr_X1hl;
 
+  reg        rf1_wen_X1hl;
+  reg  [4:0] rf1_waddr_X1hl;
+  reg [31:0] ir1_X1hl;
+
   reg        bubble_X1hl;
 
   // Pipeline Controls
@@ -1046,6 +1060,10 @@ module riscv_CoreCtrl
       rf0_waddr_X1hl        <= rf0_waddr_X0hl;
       csr_wen_X1hl          <= csr_wen_X0hl;
       csr_addr_X1hl         <= csr_addr_X0hl;
+
+      rf1_wen_X1hl   <= rf1_wen_X0hl;
+      rf1_waddr_X1hl <= rf1_waddr_X0hl;
+      ir1_X1hl       <= ir1_X0hl;
 
       bubble_X1hl           <= bubble_next_X0hl;
     end
@@ -1101,6 +1119,10 @@ module riscv_CoreCtrl
   reg        execute_mux_sel_X2hl;
   reg        muldiv_mux_sel_X2hl;
 
+  reg        rf1_wen_X2hl;
+  reg  [4:0] rf1_waddr_X2hl;
+  reg [31:0] ir1_X2hl;
+
   reg        bubble_X2hl;
 
   // Pipeline Controls
@@ -1118,6 +1140,10 @@ module riscv_CoreCtrl
       csr_wen_X2hl          <= csr_wen_X1hl;
       csr_addr_X2hl         <= csr_addr_X1hl;
       execute_mux_sel_X2hl  <= execute_mux_sel_X1hl;
+
+      rf1_wen_X2hl   <= rf1_wen_X1hl;
+      rf1_waddr_X2hl <= rf1_waddr_X1hl;
+      ir1_X2hl       <= ir1_X1hl;
 
       bubble_X2hl           <= bubble_next_X1hl;
     end
@@ -1158,6 +1184,10 @@ module riscv_CoreCtrl
   reg        csr_wen_X3hl;
   reg  [4:0] csr_addr_X3hl;
 
+  reg        rf1_wen_X3hl;
+  reg  [4:0] rf1_waddr_X3hl;
+  reg [31:0] ir1_X3hl;
+
   reg        bubble_X3hl;
 
   // Pipeline Controls
@@ -1175,6 +1205,10 @@ module riscv_CoreCtrl
       csr_wen_X3hl          <= csr_wen_X2hl;
       csr_addr_X3hl         <= csr_addr_X2hl;
       execute_mux_sel_X3hl  <= execute_mux_sel_X2hl;
+
+      rf1_wen_X3hl   <= rf1_wen_X2hl;
+      rf1_waddr_X3hl <= rf1_waddr_X2hl;
+      ir1_X3hl       <= ir1_X2hl;
 
       bubble_X3hl           <= bubble_next_X2hl;
     end
@@ -1213,6 +1247,10 @@ module riscv_CoreCtrl
   reg        csr_wen_Whl;
   reg  [4:0] csr_addr_Whl;
 
+  reg        rf1_wen_Whl;
+  reg  [4:0] rf1_waddr_Whl;
+  reg [31:0] ir1_Whl;
+
   reg        bubble_Whl;
 
   // Pipeline Controls
@@ -1227,6 +1265,10 @@ module riscv_CoreCtrl
       rf0_waddr_Whl    <= rf0_waddr_X3hl;
       csr_wen_Whl      <= csr_wen_X3hl;
       csr_addr_Whl     <= csr_addr_X3hl;
+
+      rf1_wen_Whl    <= rf1_wen_X3hl;
+      rf1_waddr_Whl  <= rf1_waddr_X3hl;
+      ir1_Whl        <= ir1_X3hl;
 
       bubble_Whl       <= bubble_next_X3hl;
     end
@@ -1263,7 +1305,7 @@ module riscv_CoreCtrl
   always @ ( posedge clk ) begin
     irA_debug       <= irA_Whl;
     inst_val_debug <= inst_val_Whl;
-    irB_debug       <= 32'b0; // FIXME: fix this when you can have two instructions issued per cycle!
+    irB_debug       <= irB_Whl; // FIXME: fix this when you can have two instructions issued per cycle!
   end
 
   //----------------------------------------------------------------------
@@ -1289,11 +1331,11 @@ module riscv_CoreCtrl
   wire [31:0] irA_X2hl = ir0_X2hl;
   wire [31:0] irA_X3hl = ir0_X3hl;
   wire [31:0] irA_Whl  = ir0_Whl;
-  wire [31:0] irB_X0hl = 32'b0;
-  wire [31:0] irB_X1hl = 32'b0;
-  wire [31:0] irB_X2hl = 32'b0;
-  wire [31:0] irB_X3hl = 32'b0;
-  wire [31:0] irB_Whl  = 32'b0;
+  wire [31:0] irB_X0hl = ir1_X0hl;
+  wire [31:0] irB_X1hl = ir1_X1hl;
+  wire [31:0] irB_X2hl = ir1_X2hl;
+  wire [31:0] irB_X3hl = ir1_X3hl;
+  wire [31:0] irB_Whl  = ir1_Whl;
 
   `ifndef SYNTHESIS
 
