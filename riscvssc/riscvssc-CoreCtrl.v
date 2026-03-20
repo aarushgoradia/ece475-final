@@ -573,6 +573,46 @@ module riscv_CoreCtrl
 
   // Steering Logic
 
+  // ALU classification
+  wire inst0_is_alu = cs0[`RISCV_INST_MSG_INST_VAL]
+      && (cs0[`RISCV_INST_MSG_MEM_REQ] == nr)
+      && (cs0[`RISCV_INST_MSG_MULDIV_EN] == n)
+      && (cs0[`RISCV_INST_MSG_BR_SEL] == br_none)
+      && (cs0[`RISCV_INST_MSG_J_EN] == n)
+      && (cs0[`RISCV_INST_MSG_CSR_WEN] == n);
+
+  wire inst1_is_alu = cs1[`RISCV_INST_MSG_INST_VAL]
+      && (cs1[`RISCV_INST_MSG_MEM_REQ] == nr)
+      && (cs1[`RISCV_INST_MSG_MULDIV_EN] == n)
+      && (cs1[`RISCV_INST_MSG_BR_SEL] == br_none)
+      && (cs1[`RISCV_INST_MSG_J_EN] == n)
+      && (cs1[`RISCV_INST_MSG_CSR_WEN] == n);
+
+  // Within-pair hazard detection
+  wire [4:0] inst0_rd_hz = cs0[`RISCV_INST_MSG_RF_WADDR];
+  wire [4:0] inst1_rd_hz = cs1[`RISCV_INST_MSG_RF_WADDR];
+  wire inst0_rf_wen_hz = cs0[`RISCV_INST_MSG_RF_WEN];
+  wire inst1_rf_wen_hz = cs1[`RISCV_INST_MSG_RF_WEN];
+  wire inst0_val_hz = inst_val_Dhl && cs0[`RISCV_INST_MSG_INST_VAL];
+  wire inst1_val_hz = inst_val_Dhl && cs1[`RISCV_INST_MSG_INST_VAL];
+
+  wire raw_hazard = inst0_val_hz && inst1_val_hz
+      && inst0_rf_wen_hz && (inst0_rd_hz != 5'd0) && (
+        (cs1[`RISCV_INST_MSG_RS1_EN] && inst1_rs1_Dhl == inst0_rd_hz)
+      || (cs1[`RISCV_INST_MSG_RS2_EN] && inst1_rs2_Dhl == inst0_rd_hz));
+
+  wire waw_hazard = inst0_val_hz && inst1_val_hz
+      && inst0_rf_wen_hz && inst1_rf_wen_hz
+      && (inst0_rd_hz != 5'd0) && (inst0_rd_hz == inst1_rd_hz);
+
+  wire struct_hazard = inst0_val_hz && inst1_val_hz
+      && !inst0_is_alu && !inst1_is_alu;
+
+  wire pair_hazard = raw_hazard || waw_hazard || struct_hazard;
+  wire swap = inst0_is_alu && !inst1_is_alu;
+
+  wire dual_issue = 1'b0; // DISABLED FOR NOW
+
   // TODO: generate your steering signal here!
 
   reg steering_mux_sel_Dhl_reg;
