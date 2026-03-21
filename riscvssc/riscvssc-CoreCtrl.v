@@ -1046,7 +1046,6 @@ module riscv_CoreCtrl
 
       bubble_X0hl           <= bubble_next_Dhl;
     end
-
   end
 
   //----------------------------------------------------------------------

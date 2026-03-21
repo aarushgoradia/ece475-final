@@ -98,8 +98,8 @@ LINK_CXX    := $(LD_CXX) -L. $(LDFLAGS)
 
 # Library creation
 
-AR          := riscv32-unknown-elf-ar
-RANLIB      := riscv32-unknown-elf-ranlib
+AR          := ar
+RANLIB      := ranlib
 
 # Host simulator
 

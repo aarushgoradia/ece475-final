@@ -433,7 +433,7 @@ Copyright (C) 2012 Free Software Foundation, Inc.
 This config.status script is free software; the Free Software Foundation
 gives unlimited permission to copy, distribute and modify it."
 
-ac_pwd='/home/ag8744/ece475/ece475-lab3/ubmark/build'
+ac_pwd='/home/ag8744/ece475-lab3/ubmark/build'
 srcdir='..'
 INSTALL='/usr/bin/install -c'
 test -n "$AWK" || AWK=awk
@@ -627,8 +627,8 @@ S["mcppbs_include_external_en"]=""
 S["mcppbs_include_external"]=""
 S["mcppbs_include_internal_en"]="ubmark "
 S["mcppbs_include_internal"]="ubmark "
-S["RANLIB"]="riscv32-unknown-elf-ranlib"
-S["AR"]="riscv32-unknown-elf-ar"
+S["RANLIB"]="ranlib"
+S["AR"]="ar"
 S["ac_ct_CXX"]=""
 S["CXXFLAGS"]="-Wall -g -O3 -D_MIPS_ARCH_LLFU"
 S["CXX"]="riscv32-unknown-elf-g++"
@@ -666,6 +666,7 @@ S["infodir"]="${datarootdir}/info"
 S["docdir"]="${datarootdir}/doc/${PACKAGE_TARNAME}"
 S["oldincludedir"]="/usr/include"
 S["includedir"]="${prefix}/include"
+S["runstatedir"]="${localstatedir}/run"
 S["localstatedir"]="${prefix}/var"
 S["sharedstatedir"]="${prefix}/com"
 S["sysconfdir"]="${prefix}/etc"
