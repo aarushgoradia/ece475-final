@@ -10,7 +10,7 @@
     li x2, 5
     li x3, 3
 
-    .align 8
+    .align 3
 
     addi x4, x2, 3
     addi x4, x1, 2
@@ -19,7 +19,7 @@
 
     // test no waw hazard to make sure both pipes work
 
-    .align 8
+    .align 3
     addi x5, x2, 3
     addi x6, x3, 4
 

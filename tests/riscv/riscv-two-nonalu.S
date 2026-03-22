@@ -10,7 +10,7 @@
     li x2, 5
     li x3, 2
 
-    .align 8
+    .align 3
 
     mul x4, x2, x3
     div x5, x1, x3
