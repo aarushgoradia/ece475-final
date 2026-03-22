@@ -46,4 +46,6 @@ riscv_srcs += \
   riscv-sub.S \
   riscv-xor.S \
   riscv-xori.S \
+  riscv-waw-hazard.S \
+  riscv-two-nonalu.S \
 

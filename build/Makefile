@@ -96,6 +96,8 @@ tests = \
   riscv-sub.vmh \
   riscv-xor.vmh \
   riscv-xori.vmh \
+  riscv-waw-hazard.vmh \
+  riscv-two-nonalu.vmh \
 
 riscvstall_rtl_sim = riscvstall-sim
 riscvstall_rtl_rand_sim = riscvstall-randdelay-sim
