@@ -1106,7 +1106,7 @@ module riscv_CoreCtrl
 
   // Stall in X if muldiv reponse is not valid and there was a valid request
 
-  wire stall_muldiv_X0hl = 1'b0; //( muldivreq_val_X0hl && inst_val_X0hl && !muldivresp_val );
+  wire stall_muldiv_X0hl = muldivreq_val_X0hl && inst_val_X0hl && !muldivreq_rdy; //( muldivreq_val_X0hl && inst_val_X0hl && !muldivresp_val );
 
   // Stall in X if imem is not ready
 

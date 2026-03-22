@@ -631,17 +631,17 @@ module riscv_CoreCtrl
   wire [4:0] sb_inst1_rs2 = (cs1[`RISCV_INST_MSG_RS2_EN] && inst1_rs2_Dhl != 5'd0) ? scoreboard[inst1_rs2_Dhl] : 5'b0;
 
   wire stall_inst0 = inst_val_Dhl && (
-      (sb_inst0_rs1[4] && sb_inst0_rs1[2:0] < 3'd2 && is_load_by_stage[sb_inst0_rs1[2:0]]) ||
-      (sb_inst0_rs2[4] && sb_inst0_rs2[2:0] < 3'd2 && is_load_by_stage[sb_inst0_rs2[2:0]]) ||
-      (sb_inst0_rs1[4] && sb_inst0_rs1[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst0_rs1[2:0]]) ||
-      (sb_inst0_rs2[4] && sb_inst0_rs2[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst0_rs2[2:0]])
+      (sb_inst0_rs1[4] && !sb_inst0_rs1[3] && sb_inst0_rs1[2:0] < 3'd2 && is_load_by_stage[sb_inst0_rs1[2:0]]) ||
+      (sb_inst0_rs2[4] && !sb_inst0_rs2[3] && sb_inst0_rs2[2:0] < 3'd2 && is_load_by_stage[sb_inst0_rs2[2:0]]) ||
+      (sb_inst0_rs1[4] && !sb_inst0_rs1[3] && sb_inst0_rs1[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst0_rs1[2:0]]) ||
+      (sb_inst0_rs2[4] && !sb_inst0_rs2[3] && sb_inst0_rs2[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst0_rs2[2:0]])
   );
 
   wire stall_inst1 = inst_val_Dhl && (
-      (sb_inst1_rs1[4] && sb_inst1_rs1[2:0] < 3'd2 && is_load_by_stage[sb_inst1_rs1[2:0]]) ||
-      (sb_inst1_rs2[4] && sb_inst1_rs2[2:0] < 3'd2 && is_load_by_stage[sb_inst1_rs2[2:0]]) ||
-      (sb_inst1_rs1[4] && sb_inst1_rs1[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst1_rs1[2:0]]) ||
-      (sb_inst1_rs2[4] && sb_inst1_rs2[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst1_rs2[2:0]])
+      (sb_inst1_rs1[4] && !sb_inst1_rs1[3] && sb_inst1_rs1[2:0] < 3'd2 && is_load_by_stage[sb_inst1_rs1[2:0]]) ||
+      (sb_inst1_rs2[4] && !sb_inst1_rs2[3] && sb_inst1_rs2[2:0] < 3'd2 && is_load_by_stage[sb_inst1_rs2[2:0]]) ||
+      (sb_inst1_rs1[4] && !sb_inst1_rs1[3] && sb_inst1_rs1[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst1_rs1[2:0]]) ||
+      (sb_inst1_rs2[4] && !sb_inst1_rs2[3] && sb_inst1_rs2[2:0] < 3'd4 && is_muldiv_by_stage[sb_inst1_rs2[2:0]])
   );
 
   wire dual_issue = inst0_val_hz && inst1_val_hz
@@ -724,14 +724,14 @@ module riscv_CoreCtrl
   wire [4:0] rs10_addr_Dhl  = (steering_mux_sel_Dhl == 0) ? inst0_rs1_Dhl : inst1_rs1_Dhl;
   wire [4:0] rs20_addr_Dhl  = (steering_mux_sel_Dhl == 0) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
 
-  wire [4:0] rs11_addr_Dhl  = inst1_rs1_Dhl;
-  wire [4:0] rs21_addr_Dhl  = inst1_rs2_Dhl;
+  wire [4:0] rs11_addr_Dhl  = (steering_mux_sel_Dhl == 1'b0) ? inst1_rs1_Dhl : inst0_rs1_Dhl;
+  wire [4:0] rs21_addr_Dhl  = (steering_mux_sel_Dhl == 1'b0) ? inst1_rs2_Dhl : inst0_rs2_Dhl;
 
   wire       rs10_en_Dhl    = csA[`RISCV_INST_MSG_RS1_EN];
   wire       rs20_en_Dhl    = csA[`RISCV_INST_MSG_RS2_EN];
 
-  wire       rs11_en_Dhl    = cs1[`RISCV_INST_MSG_RS1_EN];
-  wire       rs21_en_Dhl    = cs1[`RISCV_INST_MSG_RS2_EN];
+  wire       rs11_en_Dhl    = csB[`RISCV_INST_MSG_RS1_EN];
+  wire       rs21_en_Dhl    = csB[`RISCV_INST_MSG_RS2_EN];
 
   // For Part 2 and Optionaly Part 1, replace the following control logic with a scoreboard
 
@@ -774,7 +774,7 @@ module riscv_CoreCtrl
       end
       
       // Pipe B
-      if (dual_issue && csB[`RISCV_INST_MSG_RF_WEN] && csB[`RISCV_INST_MSG_RF_WADDR] != 5'd0) begin
+      if (inst_val_Dhl && !stall_Dhl_hazard && !squash_Dhl && dual_issue && csB[`RISCV_INST_MSG_RF_WEN] && csB[`RISCV_INST_MSG_RF_WADDR] != 5'd0) begin
           scoreboard[csB[`RISCV_INST_MSG_RF_WADDR]] <= {1'b1, 1'b1, 3'd0};
       end
     end
@@ -862,23 +862,23 @@ module riscv_CoreCtrl
     :                                             bm_r1;
 
   wire stall_0_load_use_Dhl = inst_val_Dhl && (
-    (sb_rs10_val && sb_rs10_stage < 3'd2 && is_load_by_stage[sb_rs10_stage]) ||
-    (sb_rs20_val && sb_rs20_stage < 3'd2 && is_load_by_stage[sb_rs20_stage])
+    (sb_rs10_val && !sb_rs10_pipe && sb_rs10_stage < 3'd2 && is_load_by_stage[sb_rs10_stage]) ||
+    (sb_rs20_val && !sb_rs20_pipe && sb_rs20_stage < 3'd2 && is_load_by_stage[sb_rs20_stage])
   );
 
   wire stall_0_muldiv_use_Dhl = inst_val_Dhl && (
-    (sb_rs10_val && sb_rs10_stage < 3'd4 && is_muldiv_by_stage[sb_rs10_stage]) ||
-    (sb_rs20_val && sb_rs20_stage < 3'd4 && is_muldiv_by_stage[sb_rs20_stage])
+    (sb_rs10_val && !sb_rs10_pipe && sb_rs10_stage < 3'd4 && is_muldiv_by_stage[sb_rs10_stage]) ||
+    (sb_rs20_val && !sb_rs20_pipe && sb_rs20_stage < 3'd4 && is_muldiv_by_stage[sb_rs20_stage])
   );
 
   wire stall_1_load_use_Dhl = inst_val_Dhl && (
-    (sb_rs11_val && sb_rs11_stage < 3'd2 && is_load_by_stage[sb_rs11_stage]) ||
-    (sb_rs21_val && sb_rs21_stage < 3'd2 && is_load_by_stage[sb_rs21_stage])
+    (sb_rs11_val && !sb_rs11_pipe && sb_rs11_stage < 3'd2 && is_load_by_stage[sb_rs11_stage]) ||
+    (sb_rs21_val && !sb_rs21_pipe && sb_rs21_stage < 3'd2 && is_load_by_stage[sb_rs21_stage])
   );
 
   wire stall_1_muldiv_use_Dhl = inst_val_Dhl && (
-    (sb_rs11_val && sb_rs11_stage < 3'd4 && is_muldiv_by_stage[sb_rs11_stage]) ||
-    (sb_rs21_val && sb_rs21_stage < 3'd4 && is_muldiv_by_stage[sb_rs21_stage])
+    (sb_rs11_val && !sb_rs11_pipe && sb_rs11_stage < 3'd4 && is_muldiv_by_stage[sb_rs11_stage]) ||
+    (sb_rs21_val && !sb_rs21_pipe && sb_rs21_stage < 3'd4 && is_muldiv_by_stage[sb_rs21_stage])
   );
 
 
@@ -910,7 +910,7 @@ module riscv_CoreCtrl
 
   // Muldiv Controls
 
-  wire muldivreq_val_Dhl = csA[`RISCV_INST_MSG_MULDIV_EN];
+  wire muldivreq_val_Dhl = csA[`RISCV_INST_MSG_MULDIV_EN] && issue_cur_Dhl;
 
   // Muldiv Mux Select
 
@@ -959,11 +959,12 @@ module riscv_CoreCtrl
 
   // Stall in D if muldiv unit is not ready and there is a valid request
 
+  wire stall_0_muldiv_rdy_Dhl = csA[`RISCV_INST_MSG_MULDIV_EN] && inst_val_Dhl && !muldivreq_rdy;
+
   // Aggregate Stall Signal
-  wire stall_0_Dhl = stall_0_load_use_Dhl || stall_0_muldiv_use_Dhl;
+  wire stall_0_Dhl = stall_0_load_use_Dhl || stall_0_muldiv_use_Dhl || stall_0_muldiv_rdy_Dhl;
   wire stall_1_Dhl = stall_1_load_use_Dhl || stall_1_muldiv_use_Dhl;
-  wire stall_inst_Dhl = inst_val_Dhl ? ((steering_mux_sel_Dhl == 1'b0) ? stall_0_Dhl : stall_1_Dhl) : 1'b0;
-  
+  wire stall_inst_Dhl = inst_val_Dhl ? stall_0_Dhl : 1'b0;  
   wire stall_Dhl_hazard = stall_X0hl || stall_inst_Dhl;
 
   // "Current decode instruction really issued into X0 this cycle"
@@ -1072,7 +1073,8 @@ module riscv_CoreCtrl
 
   // Muldiv request
 
-  assign muldivreq_val = muldivreq_val_Dhl && inst_val_Dhl && (!bubble_next_Dhl);
+  // assign muldivreq_val = muldivreq_val_Dhl && inst_val_Dhl && (!bubble_next_Dhl);
+  assign muldivreq_val = muldivreq_val_Dhl;
   assign muldivresp_rdy = 1'b1;
   assign muldiv_stall_mult1 = stall_X1hl;
 
@@ -1570,12 +1572,12 @@ module riscv_CoreCtrl
         // Count instructions for every cycle not squashed or stalled
 
         // FIXME: fix this when you can have at most two instructions issued per cycle!
-        if ( inst_val_Dhl && !stall_Dhl ) begin
+       if ( issue_cur_Dhl ) begin
+        num_inst = num_inst + 1;
+        if (dual_issue) begin
           num_inst = num_inst + 1;
-          if (dual_issue) begin
-            num_inst = num_inst + 1;
-          end
         end
+      end
 
       end
 
