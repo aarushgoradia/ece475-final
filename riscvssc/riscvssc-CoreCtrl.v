@@ -219,9 +219,6 @@ module riscv_CoreCtrl
   reg [31:0] ir1_Dhl;
   reg        bubble_Dhl;
 
-  wire squash_first_D_inst =
-    (inst_val_Dhl && !stall_0_Dhl && stall_1_Dhl);
-
   always @ ( posedge clk ) begin
     if ( reset ) begin
       bubble_Dhl <= 1'b1;
@@ -616,14 +613,6 @@ module riscv_CoreCtrl
   wire pair_hazard = raw_hazard || waw_hazard || struct_hazard || branch_in_pair;
   wire swap = inst0_is_alu && !inst1_is_alu;
 
-  // wire dual_issue = inst0_val_hz && inst1_val_hz
-  //   && !pair_hazard
-  //   && !stall_0_Dhl && !stall_1_Dhl
-  //   && !squash_Dhl && !stall_X0hl
-  //   && (steering_mux_sel_Dhl == 1'b0);
-
-  // wire dual_issue = 1'b0;
-
   // Stall checks for dual-issue eligibility (independent of csA)
   wire [4:0] sb_inst0_rs1 = (cs0[`RISCV_INST_MSG_RS1_EN] && inst0_rs1_Dhl != 5'd0) ? scoreboard[inst0_rs1_Dhl] : 5'b0;
   wire [4:0] sb_inst0_rs2 = (cs0[`RISCV_INST_MSG_RS2_EN] && inst0_rs2_Dhl != 5'd0) ? scoreboard[inst0_rs2_Dhl] : 5'b0;
@@ -649,8 +638,6 @@ module riscv_CoreCtrl
       && !stall_inst0 && !stall_inst1
       && !squash_Dhl && !stall_X0hl
       && (steering_mux_sel_Dhl_reg == 1'b0);
-
-  // TODO: generate your steering signal here!
 
   reg steering_mux_sel_Dhl_reg;
 
@@ -871,24 +858,11 @@ module riscv_CoreCtrl
     (sb_rs20_val && !sb_rs20_pipe && sb_rs20_stage < 3'd4 && is_muldiv_by_stage[sb_rs20_stage])
   );
 
-  wire stall_1_load_use_Dhl = inst_val_Dhl && (
-    (sb_rs11_val && !sb_rs11_pipe && sb_rs11_stage < 3'd2 && is_load_by_stage[sb_rs11_stage]) ||
-    (sb_rs21_val && !sb_rs21_pipe && sb_rs21_stage < 3'd2 && is_load_by_stage[sb_rs21_stage])
-  );
-
-  wire stall_1_muldiv_use_Dhl = inst_val_Dhl && (
-    (sb_rs11_val && !sb_rs11_pipe && sb_rs11_stage < 3'd4 && is_muldiv_by_stage[sb_rs11_stage]) ||
-    (sb_rs21_val && !sb_rs21_pipe && sb_rs21_stage < 3'd4 && is_muldiv_by_stage[sb_rs21_stage])
-  );
-
 
   // Operand Mux Select
 
   wire [1:0] op00_mux_sel_Dhl = csA[`RISCV_INST_MSG_OP0_SEL];
   wire [2:0] op01_mux_sel_Dhl = csA[`RISCV_INST_MSG_OP1_SEL];
-
-  wire [1:0] op10_mux_sel_Dhl = cs1[`RISCV_INST_MSG_OP0_SEL];
-  wire [2:0] op11_mux_sel_Dhl = cs1[`RISCV_INST_MSG_OP1_SEL];
 
   assign opA0_byp_mux_sel_Dhl = op00_byp_mux_sel_Dhl;
   assign opA0_mux_sel_Dhl = op00_mux_sel_Dhl;
@@ -963,11 +937,10 @@ module riscv_CoreCtrl
 
   // Aggregate Stall Signal
   wire stall_0_Dhl = stall_0_load_use_Dhl || stall_0_muldiv_use_Dhl || stall_0_muldiv_rdy_Dhl;
-  wire stall_1_Dhl = stall_1_load_use_Dhl || stall_1_muldiv_use_Dhl;
   wire stall_inst_Dhl = inst_val_Dhl ? stall_0_Dhl : 1'b0;  
   wire stall_Dhl_hazard = stall_X0hl || stall_inst_Dhl;
 
-  // "Current decode instruction really issued into X0 this cycle"
+  // Current decode instruction really issued into X0 this cycle
   wire issue_cur_Dhl = inst_val_Dhl && !squash_Dhl && !stall_Dhl_hazard;
 
   // Slot-specific issue events
@@ -1418,7 +1391,7 @@ module riscv_CoreCtrl
   always @ ( posedge clk ) begin
     irA_debug       <= irA_Whl;
     inst_val_debug <= inst_val_Whl;
-    irB_debug       <= irB_Whl; // FIXME: fix this when you can have two instructions issued per cycle!
+    irB_debug       <= irB_Whl; 
   end
 
   //----------------------------------------------------------------------
@@ -1571,7 +1544,7 @@ module riscv_CoreCtrl
 
         // Count instructions for every cycle not squashed or stalled
 
-        // FIXME: fix this when you can have at most two instructions issued per cycle!
+      
        if ( issue_cur_Dhl ) begin
         num_inst = num_inst + 1;
         if (dual_issue) begin

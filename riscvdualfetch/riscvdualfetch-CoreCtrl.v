@@ -973,7 +973,7 @@ module riscv_CoreCtrl
   
   wire stall_Dhl_hazard = stall_X0hl || stall_inst_Dhl;
 
-  // "Current decode instruction really issued into X0 this cycle"
+  // Current decode instruction really issued into X0 this cycle
   wire issue_cur_Dhl = inst_val_Dhl && !squash_Dhl && !stall_Dhl_hazard;
 
   // Slot-specific issue events
