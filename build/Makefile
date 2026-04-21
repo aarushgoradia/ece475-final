@@ -48,7 +48,7 @@ subpkgs = \
   riscvdualfetch \
   riscvssc \
   riscvbt \
-  # riscvgshare \
+  riscvgshare \
   # riscvtage \
 
 #-------------------------------------------------------------------------
