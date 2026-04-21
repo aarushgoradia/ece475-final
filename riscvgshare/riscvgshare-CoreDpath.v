@@ -9,7 +9,7 @@
 `include "riscvgshare-InstMsg.v"
 `include "riscvgshare-CoreDpathAlu.v"
 `include "riscvgshare-CoreDpathRegfile.v"
-`include "riscvgshare-BHT.v"
+`include "riscvgshare-gshare.v"
 
 module riscv_CoreDpath
 (
@@ -514,7 +514,7 @@ module riscv_CoreDpath
 
   // BHT
   
-  riscv_BHT #( .INDEX_BITS(10) ) bht
+  riscv_BHT #( .GHR_BITS(10) ) bht
   (
     .clk          (clk),
     .reset        (reset),

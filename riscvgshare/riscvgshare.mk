@@ -14,7 +14,7 @@ riscvgshare_srcs = \
   riscvgshare-Core.v \
   riscvgshare-InstMsg.v \
   riscvgshare-CoreDpathPipeMulDiv.v \
-  riscvgshare-BHT.v
+  riscvgshare-gshare.v
 
 riscvgshare_test_srcs = \
   riscvgshare-InstMsg.t.v \
