@@ -69,7 +69,10 @@ module riscv_CoreCtrl
 
   // CSR Status
 
-  output reg [31:0] csr_status
+  output reg [31:0] csr_status,
+
+  output            any_br_taken_Xhl_out,
+  output            bht_update_en_Xhl
 );
 
   //----------------------------------------------------------------------
@@ -670,6 +673,12 @@ module riscv_CoreCtrl
       );
 
   wire brj_taken_Xhl = ( inst_val_Xhl && any_br_taken_Xhl );
+
+  assign any_br_taken_Xhl_out = any_br_taken_Xhl;
+
+  // BHT should update when a conditional branch resolves in X and we're not stalled
+  wire is_cond_branch_Xhl = ( br_sel_Xhl != br_none ) && inst_val_Xhl;
+  assign bht_update_en_Xhl = is_cond_branch_Xhl && !stall_Xhl;
 
   // Dummy Squash Signal
 

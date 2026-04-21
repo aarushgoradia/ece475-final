@@ -47,6 +47,9 @@ subpkgs = \
   riscvlong \
   riscvdualfetch \
   riscvssc \
+  riscvbt \
+  # riscvgshare \
+  # riscvtage \
 
 #-------------------------------------------------------------------------
 # List of Assembly Tests
@@ -109,6 +112,12 @@ riscvdualfetch_rtl_sim = riscvdualfetch-sim
 riscvdualfetch_rtl_rand_sim = riscvdualfetch-randdelay-sim
 riscvssc_rtl_sim = riscvssc-sim
 riscvssc_rtl_rand_sim = riscvssc-randdelay-sim
+riscvbt_rtl_sim = riscvbt-sim
+riscvbt_rtl_rand_sim = riscvbt-randdelay-sim
+riscvgshare_rtl_sim = riscvgshare-sim
+riscvgshare_rtl_rand_sim = riscvgshare-randdelay-sim
+riscvtage_rtl_sim = riscvtage-sim
+riscvtage_rtl_rand_sim = riscvtage-randdelay-sim
 
 stall_tests_outs = $(patsubst %.vmh,%-stall.out,$(tests))
 $(stall_tests_outs) : %-stall.out : %.vmh $(riscvstall_rtl_sim)
@@ -150,6 +159,30 @@ $(ssc_tests_outs) : %-ssc.out : %.vmh $(riscvssc_rtl_sim)
 ssc_tests_rand_outs = $(patsubst %.vmh,%-ssc-rand.out,$(tests))
 $(ssc_tests_rand_outs) : %-ssc-rand.out : %.vmh $(riscvssc_rtl_rand_sim)
 	./$(riscvssc_rtl_rand_sim) +stats=1 +vcd=1 +exe=$< > $@
+
+bt_tests_outs = $(patsubst %.vmh,%-bt.out,$(tests))
+$(bt_tests_outs) : %-bt.out : %.vmh $(riscvbt_rtl_sim)
+	./$(riscvbt_rtl_sim) +stats=1 +vcd=1 +exe=$< > $@
+
+bt_tests_rand_outs = $(patsubst %.vmh,%-bt-rand.out,$(tests))
+$(bt_tests_rand_outs) : %-bt-rand.out : %.vmh $(riscvbt_rtl_rand_sim)
+	./$(riscvbt_rtl_rand_sim) +stats=1 +vcd=1 +exe=$< > $@
+
+gshare_tests_outs = $(patsubst %.vmh,%-gshare.out,$(tests))
+$(gshare_tests_outs) : %-gshare.out : %.vmh $(riscvgshare_rtl_sim)
+	./$(riscvgshare_rtl_sim) +stats=1 +vcd=1 +exe=$< > $@
+
+gshare_tests_rand_outs = $(patsubst %.vmh,%-gshare-rand.out,$(tests))
+$(gshare_tests_rand_outs) : %-gshare-rand.out : %.vmh $(riscvgshare_rtl_rand_sim)
+	./$(riscvgshare_rtl_rand_sim) +stats=1 +vcd=1 +exe=$< > $@
+
+tage_tests_outs = $(patsubst %.vmh,%-tage.out,$(tests))
+$(tage_tests_outs) : %-tage.out : %.vmh $(riscvtage_rtl_sim)
+	./$(riscvtage_rtl_sim) +stats=1 +vcd=1 +exe=$< > $@
+
+tage_tests_rand_outs = $(patsubst %.vmh,%-tage-rand.out,$(tests))
+$(tage_tests_rand_outs) : %-tage-rand.out : %.vmh $(riscvtage_rtl_rand_sim)
+	./$(riscvtage_rtl_rand_sim) +stats=1 +vcd=1 +exe=$< > $@
 
 check-asm-riscvstall : $(stall_tests_outs)
 	@echo; \
@@ -201,6 +234,36 @@ check-asm-rand-riscvssc : $(ssc_tests_rand_outs)
   perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
        $(ssc_tests_rand_outs); echo;
 
+check-asm-riscvbt : $(bt_tests_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(bt_tests_outs); echo;
+
+check-asm-rand-riscvbt : $(bt_tests_rand_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(bt_tests_rand_outs); echo;
+
+check-asm-riscvgshare : $(gshare_tests_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(gshare_tests_outs); echo;
+
+check-asm-rand-riscvgshare : $(gshare_tests_rand_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(gshare_tests_rand_outs); echo;
+
+check-asm-riscvtage : $(tage_tests_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(tage_tests_outs); echo;
+
+check-asm-rand-riscvtage : $(tage_tests_rand_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(tage_tests_rand_outs); echo;
+
 junk += $(stall_tests_outs)
 junk += $(stall_tests_rand_outs)
 junk += $(byp_tests_outs)
@@ -211,6 +274,12 @@ junk += $(dualfetch_tests_outs)
 junk += $(dualfetch_tests_rand_outs)
 junk += $(ssc_tests_outs)
 junk += $(ssc_tests_rand_outs)
+junk += $(bt_tests_outs)
+junk += $(bt_tests_rand_outs)
+junk += $(gshare_tests_outs)
+junk += $(gshare_tests_rand_outs)
+junk += $(tage_tests_outs)
+junk += $(tage_tests_rand_outs)
 
 #-------------------------------------------------------------------------
 # List of Benchmarks
@@ -242,6 +311,18 @@ ssc_bmarks_outs = $(patsubst %.vmh,%-ssc.out,$(bmarks))
 $(ssc_bmarks_outs) : %-ssc.out : %.vmh $(riscvssc_rtl_sim)
 	./$(riscvssc_rtl_sim) +verbose=1 +vcd=1 +exe=$< > $@
 
+bt_bmarks_outs = $(patsubst %.vmh,%-bt.out,$(bmarks))
+$(bt_bmarks_outs) : %-bt.out : %.vmh $(riscvbt_rtl_sim)
+	./$(riscvbt_rtl_sim) +verbose=1 +vcd=1 +exe=$< > $@
+
+gshare_bmarks_outs = $(patsubst %.vmh,%-gshare.out,$(bmarks))
+$(gshare_bmarks_outs) : %-gshare.out : %.vmh $(riscvgshare_rtl_sim)
+	./$(riscvgshare_rtl_sim) +verbose=1 +vcd=1 +exe=$< > $@
+
+tage_bmarks_outs = $(patsubst %.vmh,%-tage.out,$(bmarks))
+$(tage_bmarks_outs) : %-tage.out : %.vmh $(riscvtage_rtl_sim)
+	./$(riscvtage_rtl_sim) +verbose=1 +vcd=1 +exe=$< > $@
+
 run-bmark-riscvstall : $(stall_bmarks_outs)
 	@echo; \
   perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
@@ -267,11 +348,29 @@ run-bmark-riscvssc : $(ssc_bmarks_outs)
   perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
        $(ssc_bmarks_outs); echo;
 
+run-bmark-riscvbt : $(bt_bmarks_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(bt_bmarks_outs); echo;
+
+run-bmark-riscvgshare : $(gshare_bmarks_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(gshare_bmarks_outs); echo;
+
+run-bmark-riscvtage : $(tage_bmarks_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(tage_bmarks_outs); echo;
+
 stall_bmarks_rand_outs = $(patsubst %.vmh,%-stall-rand.out,$(bmarks))
 byp_bmarks_rand_outs = $(patsubst %.vmh,%-byp-rand.out,$(bmarks))
 long_bmarks_rand_outs = $(patsubst %.vmh,%-long-rand.out,$(bmarks))
 dualfetch_bmarks_rand_outs = $(patsubst %.vmh,%-dualfetch-rand.out,$(bmarks))
 ssc_bmarks_rand_outs = $(patsubst %.vmh,%-ssc-rand.out,$(bmarks))
+bt_bmarks_rand_outs = $(patsubst %.vmh,%-bt-rand.out,$(bmarks))
+gshare_bmarks_rand_outs = $(patsubst %.vmh,%-gshare-rand.out,$(bmarks))
+tage_bmarks_rand_outs = $(patsubst %.vmh,%-tage-rand.out,$(bmarks))
 
 $(stall_bmarks_rand_outs) : %-stall-rand.out : %.vmh $(riscvstall_rtl_rand_sim)
 	./$(riscvstall_rtl_rand_sim) +verbose=1 +vcd=1 +exe=$< > $@
@@ -287,6 +386,15 @@ $(dualfetch_bmarks_rand_outs) : %-dualfetch-rand.out : %.vmh $(riscvdualfetch_rt
 
 $(ssc_bmarks_rand_outs) : %-ssc-rand.out : %.vmh $(riscvssc_rtl_rand_sim)
 	./$(riscvssc_rtl_rand_sim) +verbose=1 +vcd=1 +exe=$< > $@
+
+$(bt_bmarks_rand_outs) : %-bt-rand.out : %.vmh $(riscvbt_rtl_rand_sim)
+	./$(riscvbt_rtl_rand_sim) +verbose=1 +vcd=1 +exe=$< > $@
+
+$(gshare_bmarks_rand_outs) : %-gshare-rand.out : %.vmh $(riscvgshare_rtl_rand_sim)
+	./$(riscvgshare_rtl_rand_sim) +verbose=1 +vcd=1 +exe=$< > $@
+
+$(tage_bmarks_rand_outs) : %-tage-rand.out : %.vmh $(riscvtage_rtl_rand_sim)
+	./$(riscvtage_rtl_rand_sim) +verbose=1 +vcd=1 +exe=$< > $@
 
 run-bmark-rand-riscvstall : $(stall_bmarks_rand_outs)
 	@echo; \
@@ -313,11 +421,29 @@ run-bmark-rand-riscvssc : $(ssc_bmarks_rand_outs)
   perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
        $(ssc_bmarks_rand_outs); echo;
 
+run-bmark-rand-riscvbt : $(bt_bmarks_rand_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(bt_bmarks_rand_outs); echo;
+
+run-bmark-rand-riscvgshare : $(gshare_bmarks_rand_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(gshare_bmarks_rand_outs); echo;
+
+run-bmark-rand-riscvtage : $(tage_bmarks_rand_outs)
+	@echo; \
+  perl -ne 'print "  [$$1] $$ARGV \t$$2\n" if /\*{3}(.{8})\*{3}(.*)/' \
+       $(tage_bmarks_rand_outs); echo;
+
 junk += $(stall_bmarks_outs)
 junk += $(byp_bmarks_outs)
 junk += $(dualfetch_bmarks_outs)
 junk += $(ssc_bmarks_outs)
 junk += $(long_bmarks_outs)
+junk += $(bt_bmarks_outs)
+junk += $(gshare_bmarks_outs)
+junk += $(tage_bmarks_outs)
 
 #-------------------------------------------------------------------------
 # Programs

@@ -88,6 +88,10 @@ module riscv_Core
   wire        branch_cond_geu_Xhl;
   wire [31:0] proc2csr_data_Whl;
 
+  wire bht_update_en_Xhl_wire;
+  wire any_br_taken_Xhl_wire;
+  wire bht_predict_Dhl_wire;
+
   //----------------------------------------------------------------------
   // Pack Memory Request Messages
   //----------------------------------------------------------------------
@@ -197,7 +201,9 @@ module riscv_Core
 
     // CSR Status
 
-    .csr_status             (csr_status)
+    .csr_status             (csr_status),
+    .any_br_taken_Xhl_out   (any_br_taken_Xhl_wire),
+    .bht_update_en_Xhl      (bht_update_en_Xhl_wire)
   );
 
   //----------------------------------------------------------------------
@@ -259,7 +265,10 @@ module riscv_Core
     .branch_cond_ltu_Xhl	 (branch_cond_ltu_Xhl),
     .branch_cond_ge_Xhl	     (branch_cond_ge_Xhl),
     .branch_cond_geu_Xhl	 (branch_cond_geu_Xhl),
-    .proc2csr_data_Whl       (proc2csr_data_Whl)
+    .proc2csr_data_Whl       (proc2csr_data_Whl),
+    .bht_update_en_Xhl      (bht_update_en_Xhl_wire),
+    .any_br_taken_Xhl     (any_br_taken_Xhl_wire),
+    .bht_predict_Dhl      (bht_predict_Dhl_wire)
   );
 
 endmodule

@@ -9,6 +9,7 @@
 `include "riscvbt-InstMsg.v"
 `include "riscvbt-CoreDpathAlu.v"
 `include "riscvbt-CoreDpathRegfile.v"
+`include "riscvbt-BHT.v"
 
 module riscv_CoreDpath
 (
@@ -55,6 +56,10 @@ module riscv_CoreDpath
 
 	input					stall_X2hl,
 	input					stall_X3hl,
+
+  input         bht_update_en_Xhl,
+  input         any_br_taken_Xhl,
+  output        bht_predict_Dhl,
 
   // Control Signals (dpath->ctrl)
 
@@ -499,6 +504,23 @@ module riscv_CoreDpath
     .stall_X3hl               (stall_X3hl           )
 	);
 
+
+  // BHT
+  
+  riscv_BHT #( .INDEX_BITS(10) ) bht
+  (
+    .clk          (clk),
+    .reset        (reset),
+
+    // Read port: prediction for instruction currently in D
+    .pc_read      (pc_Dhl),
+    .predict_taken(bht_predict_Dhl),
+
+    // Write port: update with resolved branch outcome from X
+    .update_en    (bht_update_en_Xhl),
+    .pc_update    (pc_Xhl),
+    .actual_taken (any_br_taken_Xhl)
+  );
 
 endmodule
 

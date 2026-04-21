@@ -14,6 +14,7 @@ riscvbt_srcs = \
   riscvbt-Core.v \
   riscvbt-InstMsg.v \
   riscvbt-CoreDpathPipeMulDiv.v \
+  riscvbt-BHT.v
 
 riscvbt_test_srcs = \
   riscvbt-InstMsg.t.v \
