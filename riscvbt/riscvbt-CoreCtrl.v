@@ -66,13 +66,16 @@ module riscv_CoreCtrl
   input         branch_cond_ge_Xhl,
   input         branch_cond_geu_Xhl,
   input  [31:0] proc2csr_data_Whl,
+  input         bht_predict_Dhl,
 
   // CSR Status
 
   output reg [31:0] csr_status,
 
   output            any_br_taken_Xhl_out,
-  output            bht_update_en_Xhl
+  output            bht_update_en_Xhl,
+  output            brj_taken_Xhl_out,
+  output            predicted_taken_Xhl_out
 );
 
   //----------------------------------------------------------------------
@@ -440,8 +443,13 @@ module riscv_CoreCtrl
 
   // Jump and Branch Controls
 
-  wire       brj_taken_Dhl = ( inst_val_Dhl && cs[`RISCV_INST_MSG_J_EN] );
+  wire brj_taken_Dhl = ( inst_val_Dhl && cs[`RISCV_INST_MSG_J_EN] )
+                  || predict_taken_Dhl;
   wire [2:0] br_sel_Dhl    = cs[`RISCV_INST_MSG_BR_SEL]; 
+
+  // BHT prediction for conditional branches in D
+  wire is_cond_branch_Dhl = ( br_sel_Dhl != br_none ) && inst_val_Dhl;
+  wire predict_taken_Dhl  = is_cond_branch_Dhl && bht_predict_Dhl;
 
   // PC Mux Select
 
@@ -611,6 +619,8 @@ module riscv_CoreCtrl
 
   reg        bubble_Xhl;
 
+  reg        predicted_taken_Xhl;
+
   // Pipeline Controls
 
   always @ ( posedge clk ) begin
@@ -638,6 +648,7 @@ module riscv_CoreCtrl
 			is_ld_Xhl						 <= is_ld_Dhl;
 
       bubble_Xhl           <= bubble_next_Dhl;
+      predicted_taken_Xhl  <= predict_taken_Dhl;
     end
 
   end
@@ -672,12 +683,17 @@ module riscv_CoreCtrl
     = ( bne_taken_Xhl || blt_taken_Xhl || beq_taken_Xhl || bge_taken_Xhl || bltu_taken_Xhl || bgeu_taken_Xhl
       );
 
-  wire brj_taken_Xhl = ( inst_val_Xhl && any_br_taken_Xhl );
+  // Misprediction: predicted and actual disagree
+  wire is_cond_branch_Xhl = ( br_sel_Xhl != br_none ) && inst_val_Xhl;
+  wire mispredict_Xhl     = is_cond_branch_Xhl && ( predicted_taken_Xhl != any_br_taken_Xhl );
 
+  assign predicted_taken_Xhl_out = predicted_taken_Xhl;
+
+  wire brj_taken_Xhl = mispredict_Xhl;
+  assign brj_taken_Xhl_out = brj_taken_Xhl;
   assign any_br_taken_Xhl_out = any_br_taken_Xhl;
 
-  // BHT should update when a conditional branch resolves in X and we're not stalled
-  wire is_cond_branch_Xhl = ( br_sel_Xhl != br_none ) && inst_val_Xhl;
+  // BHT updates when a conditional branch resolves in X and we're not stalled
   assign bht_update_en_Xhl = is_cond_branch_Xhl && !stall_Xhl;
 
   // Dummy Squash Signal

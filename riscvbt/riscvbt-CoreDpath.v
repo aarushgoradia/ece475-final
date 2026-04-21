@@ -59,6 +59,8 @@ module riscv_CoreDpath
 
   input         bht_update_en_Xhl,
   input         any_br_taken_Xhl,
+  input         brj_taken_Xhl,
+  input         predicted_taken_Xhl,
   output        bht_predict_Dhl,
 
   // Control Signals (dpath->ctrl)
@@ -89,7 +91,7 @@ module riscv_CoreDpath
   // Pull mux inputs from later stages
 
   assign pc_plus4_Phl       = pc_plus4_Fhl;
-  assign branch_targ_Phl    = branch_targ_Xhl;
+  assign branch_targ_Phl = brj_taken_Xhl ? recovery_target_Xhl : branch_targ_Dhl;
   assign jump_targ_Phl      = jump_targ_Dhl;
   assign jumpreg_targ_Phl   = jumpreg_targ_Dhl;
 
@@ -281,6 +283,11 @@ module riscv_CoreDpath
   assign dmemreq_msg_data = wdata_Xhl;
 
   wire [31:0] execute_mux_out_Xhl = alu_out_Xhl;
+
+  wire [31:0] pc_plus4_Xhl = pc_Xhl + 32'd4;
+  wire [31:0] recovery_target_Xhl
+  = ( predicted_taken_Xhl && !any_br_taken_Xhl ) ? pc_plus4_Xhl
+  :                                                branch_targ_Xhl;
 
  
   //----------------------------------------------------------------------
