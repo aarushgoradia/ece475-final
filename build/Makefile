@@ -49,7 +49,7 @@ subpkgs = \
   riscvssc \
   riscvbt \
   riscvgshare \
-  # riscvtage \
+  riscvtage \
 
 #-------------------------------------------------------------------------
 # List of Assembly Tests
