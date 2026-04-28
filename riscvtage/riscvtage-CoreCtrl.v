@@ -66,14 +66,14 @@ module riscv_CoreCtrl
   input         branch_cond_ge_Xhl,
   input         branch_cond_geu_Xhl,
   input  [31:0] proc2csr_data_Whl,
-  input         bht_predict_Dhl,
+  input         tage_predict_Dhl,
 
   // CSR Status
 
   output reg [31:0] csr_status,
 
   output            any_br_taken_Xhl_out,
-  output            bht_update_en_Xhl,
+  output            tage_update_en_Xhl,
   output            brj_taken_Xhl_out,
   output            predicted_taken_Xhl_out
 );
@@ -447,9 +447,9 @@ module riscv_CoreCtrl
                   || predict_taken_Dhl;
   wire [2:0] br_sel_Dhl    = cs[`RISCV_INST_MSG_BR_SEL]; 
 
-  // BHT prediction for conditional branches in D
+  // TAGE prediction for conditional branches in D
   wire is_cond_branch_Dhl = ( br_sel_Dhl != br_none ) && inst_val_Dhl;
-  wire predict_taken_Dhl  = is_cond_branch_Dhl && bht_predict_Dhl;
+  wire predict_taken_Dhl  = is_cond_branch_Dhl && tage_predict_Dhl;
 
   // PC Mux Select
 
@@ -693,8 +693,8 @@ module riscv_CoreCtrl
   assign brj_taken_Xhl_out = brj_taken_Xhl;
   assign any_br_taken_Xhl_out = any_br_taken_Xhl;
 
-  // BHT updates when a conditional branch resolves in X and we're not stalled
-  assign bht_update_en_Xhl = is_cond_branch_Xhl && !stall_Xhl;
+  // TAGE updates when a conditional branch resolves in X and we're not stalled
+  assign tage_update_en_Xhl = is_cond_branch_Xhl && !stall_Xhl;
 
   // Dummy Squash Signal
 

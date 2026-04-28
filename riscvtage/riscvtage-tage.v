@@ -55,7 +55,7 @@ module riscv_TAGE #(parameter INDEX_BITS = 8) (
 
     assign t1_idx_out = t1_index_hash;
     assign t1_tag_out = tag;
-    assign predict_taken = t1_hit ? (t1_ctr[t1_index_hash])[2] : t0_predict_taken;
+    assign predict_taken = t1_hit ? t1_ctr[t1_index_hash][2] : t0_predict_taken;
     assign provider_out = t1_hit ? 1 : 0;
 
     always @ ( posedge clk ) begin
@@ -158,6 +158,6 @@ module riscv_T0 #(parameter INDEX_BITS = 8) (
     endmodule
 
     `endif
-    vim: set textwidth=0 ts=2 sw=2 sts=2 :
+    // vim: set textwidth=0 ts=2 sw=2 sts=2 :
 
 

@@ -58,8 +58,11 @@ PATH: /usr/licensed/synopsys/syn_I-2013.12-SP4/bin
 PATH: /usr/licensed/synopsys/vera_D-2009.12-17/vera_vD-2009.12-17_amd64/bin
 PATH: /home/ECE475/local/bin
 PATH: /usr/bin/
-PATH: /home/ag8744/.local/bin
-PATH: /home/ag8744/bin
+PATH: /home/jr7957/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand
+PATH: /home/jr7957/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli
+PATH: /home/jr7957/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli
+PATH: /home/jr7957/.local/bin
+PATH: /home/jr7957/bin
 PATH: /usr/share/Modules/bin
 PATH: /usr/local/bin
 PATH: /usr/bin
@@ -223,6 +226,7 @@ on adroit-vis.princeton.edu
 config.status:824: creating ubmark.mk
 config.status:824: creating Makefile
 config.status:824: creating ubmark-config.h
+config.status:984: ubmark-config.h is unchanged
 
 ## ---------------- ##
 ## Cache variables. ##

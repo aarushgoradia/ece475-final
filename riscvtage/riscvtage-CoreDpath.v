@@ -57,11 +57,11 @@ module riscv_CoreDpath
 	input					stall_X2hl,
 	input					stall_X3hl,
 
-  input         bht_update_en_Xhl,
+  input         tage_update_en_Xhl,
   input         any_br_taken_Xhl,
   input         brj_taken_Xhl,
   input         predicted_taken_Xhl,
-  output        bht_predict_Dhl,
+  output        tage_predict_Dhl,
 
   // Control Signals (dpath->ctrl)
 
@@ -239,6 +239,10 @@ module riscv_CoreDpath
 
   wire [31:0] wdata_Dhl = rdata1_byp_mux_out_Dhl;
 
+  wire tage_provider_Dhl;
+  wire [7:0] tage_idx_Dhl;
+  wire [7:0] tage_tag_Dhl;
+
   //----------------------------------------------------------------------
   // X <- D
   //----------------------------------------------------------------------
@@ -248,6 +252,9 @@ module riscv_CoreDpath
   reg [31:0] op0_mux_out_Xhl;
   reg [31:0] op1_mux_out_Xhl;
   reg [31:0] wdata_Xhl;
+  reg tage_provider_Xhl;
+  reg [7:0] tage_idx_Xhl;
+  reg [7:0] tage_tag_Xhl;
 
   always @ (posedge clk) begin
     if( !stall_Xhl ) begin
@@ -256,6 +263,9 @@ module riscv_CoreDpath
       op0_mux_out_Xhl <= op0_mux_out_Dhl;
       op1_mux_out_Xhl <= op1_mux_out_Dhl;
       wdata_Xhl       <= wdata_Dhl;
+      tage_provider_Xhl <= tage_provider_Dhl;
+      tage_idx_Xhl    <= tage_idx_Dhl;
+      tage_tag_Xhl    <= tage_idx_Dhl;
     end
   end
 
@@ -512,21 +522,30 @@ module riscv_CoreDpath
 	);
 
 
-  // BHT
+  // tAGE
   
-  riscv_BHT #( .GHR_BITS(10) ) bht
+  riscv_TAGE #( .INDEX_BITS(8) ) tage
   (
     .clk          (clk),
     .reset        (reset),
 
     // Read port: prediction for instruction currently in D
     .pc_read      (pc_Dhl),
-    .predict_taken(bht_predict_Dhl),
+    .predict_taken(tage_predict_Dhl),
 
     // Write port: update with resolved branch outcome from X
-    .update_en    (bht_update_en_Xhl),
+    .update_en    (tage_update_en_Xhl),
     .pc_update    (pc_Xhl),
-    .actual_taken (any_br_taken_Xhl)
+    .actual_taken (any_br_taken_Xhl),
+
+    .provider_out (tage_provider_Dhl),
+    .t1_idx_out   (tage_idx_Dhl),
+    .t1_tag_out   (tage_tag_Dhl),
+
+    .provider_update (tage_provider_Xhl),
+    .t1_idx_update   (tage_idx_Xhl),
+    .t1_tag_update   (tage_tag_Xhl),
+    .predicted_taken_update (predicted_taken_Xhl)
   );
 
 endmodule
