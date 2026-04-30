@@ -290,6 +290,9 @@ bmarks = \
   ubmark-cmplx-mult.vmh \
   ubmark-masked-filter.vmh \
   ubmark-bin-search.vmh \
+  ubmark-correlated.vmh \
+  ubmark-nested-loops.vmh \
+  ubmark-long-correl.vmh \
 
 stall_bmarks_outs = $(patsubst %.vmh,%-stall.out,$(bmarks))
 $(stall_bmarks_outs) : %-stall.out : %.vmh $(riscvstall_rtl_sim)

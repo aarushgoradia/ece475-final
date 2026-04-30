@@ -49,7 +49,7 @@ module riscv_TAGE #(parameter INDEX_BITS = 8) (
 
     wire [7:0] t1_index_hash = ghr ^ pc_read[9:2];
     wire [7:0] rotated_ghr = {ghr[6:0], ghr[7]};
-    wire [7:0] tag = rotated_ghr ^ pc_read[9:2];
+    wire [7:0] tag = rotated_ghr ^ pc_read[17:10];
 
     wire t1_hit = t1_tag[t1_index_hash] == tag;
 

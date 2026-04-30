@@ -309,6 +309,7 @@ module riscv_sim;
   //----------------------------------------------------------------------
 
   real ipc;
+  real mispredict_rate;
 
   always @ ( * ) begin
     if ( !reset && ( status != 0 ) ) begin
@@ -321,15 +322,23 @@ module riscv_sim;
 
       if ( verbose == 1'b1 ) begin
         ipc = proc.ctrl.num_inst/$itor(proc.ctrl.num_cycles);
+        if ( proc.ctrl.num_cond_branches > 0 )
+          mispredict_rate = proc.ctrl.num_mispredicts/$itor(proc.ctrl.num_cond_branches);
+        else
+          mispredict_rate = 0.0;
 
         $display( "--------------------------------------------" );
         $display( " STATS                                      " );
         $display( "--------------------------------------------" );
 
-        $display( " status     = %d", status                     );
-        $display( " num_cycles = %d", proc.ctrl.num_cycles       );
-        $display( " num_inst   = %d", proc.ctrl.num_inst         );
-        $display( " ipc        = %f", ipc                        );
+        $display( " status             = %d", status                          );
+        $display( " num_cycles         = %d", proc.ctrl.num_cycles            );
+        $display( " num_inst           = %d", proc.ctrl.num_inst              );
+        $display( " num_cond_branches  = %d", proc.ctrl.num_cond_branches     );
+        $display( " num_taken_branches = %d", proc.ctrl.num_taken_branches    );
+        $display( " num_mispredicts    = %d", proc.ctrl.num_mispredicts       );
+        $display( " ipc                = %f", ipc                             );
+        $display( " mispredict_rate    = %f", mispredict_rate                 );
       end
 
       #20 $finish;

@@ -991,28 +991,34 @@ module riscv_CoreCtrl
 
   `ifndef SYNTHESIS
 
-  reg [31:0] num_inst    = 32'b0;
-  reg [31:0] num_cycles  = 32'b0;
-  reg        stats_en    = 1'b0; // Used for enabling stats on asm tests
+    reg [31:0] num_inst           = 32'b0;
+    reg [31:0] num_cycles         = 32'b0;
+    reg [31:0] num_cond_branches  = 32'b0;
+    reg [31:0] num_taken_branches = 32'b0;
+    reg [31:0] num_mispredicts    = 32'b0;
+    reg        stats_en           = 1'b0;
 
-  always @( posedge clk ) begin
-    if ( !reset ) begin
+    always @( posedge clk ) begin
+      if ( !reset ) begin
+        if ( stats_en || csr_stats ) begin
+          num_cycles = num_cycles + 1;
 
-      // Count cycles if stats are enabled
+          if ( inst_val_Dhl && !stall_Dhl ) begin
+            num_inst = num_inst + 1;
+          end
 
-      if ( stats_en || csr_stats ) begin
-        num_cycles = num_cycles + 1;
-
-        // Count instructions for every cycle not squashed or stalled
-
-        if ( inst_val_Dhl && !stall_Dhl ) begin
-          num_inst = num_inst + 1;
+          // Branch prediction stats — under predict-not-taken,
+          // every actually-taken conditional branch is a misprediction
+          if ( inst_val_Xhl && (br_sel_Xhl != br_none) && !stall_Xhl ) begin
+            num_cond_branches = num_cond_branches + 1;
+            if ( any_br_taken_Xhl ) begin
+              num_taken_branches = num_taken_branches + 1;
+              num_mispredicts    = num_mispredicts + 1;
+            end
+          end
         end
-
       end
-
     end
-  end
 
   `endif
 

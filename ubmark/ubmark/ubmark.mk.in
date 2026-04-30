@@ -19,4 +19,7 @@ ubmark_install_prog_srcs = \
   ubmark-cmplx-mult.c \
   ubmark-bin-search.c \
   ubmark-masked-filter.c \
+  ubmark-correlated.c \
+  ubmark-nested-loops.c \
+  ubmark-long-correl.c \
 
