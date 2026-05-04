@@ -31,23 +31,15 @@ module riscv_BHT
   reg [1:0]          pht [0:NUM_ENTRIES-1];
   reg [GHR_BITS-1:0] ghr;
 
-  //----------------------------------------------------------------------
   // Index computation (gShare: XOR of PC and GHR)
-  //----------------------------------------------------------------------
-
   wire [GHR_BITS-1:0] read_idx   = pc_read  [GHR_BITS+1:2] ^ ghr;
   wire [GHR_BITS-1:0] update_idx = pc_update[GHR_BITS+1:2] ^ ghr;
 
-  //----------------------------------------------------------------------
-  // Prediction (combinational read)
-  //----------------------------------------------------------------------
 
+  // Prediction (combinational read)
   assign predict_taken = pht[read_idx][1];
 
-  //----------------------------------------------------------------------
   // Update logic (saturating counter)
-  //----------------------------------------------------------------------
-
   wire [1:0] current_ctr = pht[update_idx];
 
   wire [1:0] next_ctr
@@ -55,10 +47,8 @@ module riscv_BHT
     : (!actual_taken && current_ctr != 2'b00 ) ? current_ctr - 2'b01
     :                                            current_ctr;
 
-  //----------------------------------------------------------------------
-  // Sequential logic: reset, counter update, GHR shift
-  //----------------------------------------------------------------------
 
+  // Sequential logic: reset, counter update, GHR shift
   integer i;
 
   always @ ( posedge clk ) begin
