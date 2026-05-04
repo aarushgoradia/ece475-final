@@ -19,14 +19,14 @@ module riscv_TAGE #(parameter INDEX_BITS = 8) (
 
     // Debug / external signals to observe/update T1 provider information
     output        provider_out,        // indicates whether T1 provided the prediction
-    output [7:0]  t1_idx_out,          // T1 index computed from current PC/GHR (exposed)
-    output [7:0]  t1_tag_out,          // tag computed for T1 (exposed)
+    output [7:0]  t1_idx_out,
+    output [7:0]  t1_tag_out,
 
     // Update controls (driven by outside code to indicate which T1 entry to update)
     input         provider_update,     // whether provider was T1 for the prediction being updated
-    input  [7:0]  t1_idx_update,       // index into T1 to update
-    input  [7:0]  t1_tag_update,       // tag to write into T1 if allocation happens
-    input         predicted_taken_update // what was predicted when the branch was speculatively resolved
+    input  [7:0]  t1_idx_update,    
+    input  [7:0]  t1_tag_update,     
+    input         predicted_taken_update
 );
     integer i;
 
@@ -36,7 +36,6 @@ module riscv_TAGE #(parameter INDEX_BITS = 8) (
 
     // Baseline predictor T0's prediction (wire to be used if T1 misses)
     wire t0_predict_taken;
-    // Only update T0 when T1 was not the provider for that prediction
     wire t0_update_en = update_en && (provider_update == 1'b0);
 
     // Instantiate simple 2-bit counter table predictor (T0)
@@ -55,9 +54,7 @@ module riscv_TAGE #(parameter INDEX_BITS = 8) (
     reg [7:0] t1_tag [0:NUM_ENTRIES - 1]; // tag bits to validate indexed entry
     reg       t1_u   [0:NUM_ENTRIES - 1]; // usefulness bit: used for replacement/allocation decisions
 
-    // Index and tag computation for T1:
-    // - Use XOR of GHR and pc bits to mix history into index (simple hashing).
-    // - Skip the bottom 2 PC bits (4-byte alignment).
+    // Use XOR of GHR and pc bits to mix history into index (simple hashing).
     wire [7:0] t1_index_hash = ghr ^ pc_read[9:2];
 
     // A rotated version of the GHR is used to compute the tag to reduce aliasing
@@ -68,13 +65,11 @@ module riscv_TAGE #(parameter INDEX_BITS = 8) (
     // T1 hit occurs when stored tag equals computed tag for the indexed entry
     wire t1_hit = t1_tag[t1_index_hash] == tag;
 
-    // Expose computed index/tag for debug or external update arbitration
     assign t1_idx_out = t1_index_hash;
     assign t1_tag_out = tag;
 
-    // Prediction selection:
-    // - If T1 hits, use top bit of its 3-bit counter (stronger predictor)
-    // - Otherwise fall back to T0's 2-bit counter prediction
+    // If T1 hits, use top bit of its 3-bit counter (stronger predictor)
+    // Otherwise fall back to T0's 2-bit counter prediction
     assign predict_taken = t1_hit ? t1_ctr[t1_index_hash][2] : t0_predict_taken;
     assign provider_out = t1_hit ? 1 : 0;
 
@@ -159,14 +154,13 @@ module riscv_T0 #(parameter INDEX_BITS = 8) (
     reg [1:0] counters [0:NUM_ENTRIES-1];
 
     // Index computation
-    // Skip bottom 2 bits because instructions are 4-byte aligned.
     wire [INDEX_BITS-1:0] read_idx   = pc_read[INDEX_BITS+1:2];
     wire [INDEX_BITS-1:0] update_idx = pc_update[INDEX_BITS+1:2];
 
-    // Combinational prediction read: use MSB of 2-bit counter to represent taken/not-taken
+    // Combinational prediction read
     assign predict_taken = counters[read_idx][1];
 
-    // Prepare update: compute next saturating counter value based on actual outcome
+    // Prepare update
     wire [1:0] current_ctr = counters[update_idx];
 
     wire [1:0] next_ctr
